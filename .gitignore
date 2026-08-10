@@ -1,0 +1,34 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+
+# --- Data (submitted separately in the ZIP / Drive link, not in git) ---
+data/
+!data/.gitkeep
+
+# --- Training artefacts ---
+runs/
+weights/*.pt
+weights/*.pth
+weights/*.onnx
+
+# --- Web app runtime ---
+webapp/backend/uploads/
+webapp/backend/outputs/
+webapp/samples/*.mp4
+
+# --- FiftyOne / Ultralytics local state ---
+.fiftyone/
+*.mongodb
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
