@@ -36,9 +36,11 @@ def _torch():
 
 def _torchvision():
     import torchvision
-    from torchvision.models.detection import ssd300_vgg16  # noqa: F401
+    from torchvision.models.detection import (  # noqa: F401
+        ssdlite320_mobilenet_v3_large,
+    )
 
-    return f"{torchvision.__version__} | ssd300_vgg16 available"
+    return f"{torchvision.__version__} | ssdlite320_mobilenet_v3_large available"
 
 
 def _cv2():
@@ -62,6 +64,13 @@ def _ultralytics():
     import ultralytics
 
     return ultralytics.__version__
+
+
+def _transformers():
+    import transformers
+    from transformers import DFineForObjectDetection  # noqa: F401
+
+    return f"{transformers.__version__} | DFineForObjectDetection available"
 
 
 def _pycocotools():
@@ -119,6 +128,7 @@ def main() -> int:
     check("opencv (cv2)", _cv2)
     check("fiftyone", _fiftyone)
     check("ultralytics", _ultralytics)
+    check("transformers", _transformers)
     check("pycocotools", _pycocotools)
     check("fastapi stack", _webstack)
     check("scientific stack", _sci)

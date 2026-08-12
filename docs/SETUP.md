@@ -67,9 +67,11 @@ python -m ipykernel install --user --name objdet --display-name "Python (objdet)
 | Thư viện | Version | Ghi chú |
 |---|---|---|
 | torch | 2.13.0+cu126 | CUDA khả dụng, đã test matmul trên GPU |
-| torchvision | 0.28.0+cu126 | cung cấp `ssd300_vgg16` + weights pretrained COCO |
+| torchvision | 0.28.0+cu126 | cung cấp `ssdlite320_mobilenet_v3_large` + weights pretrained COCO |
 | fiftyone | 1.20.1 | tải subset COCO theo class; đi kèm MongoDB nhúng (`fiftyone-db`) |
-| ultralytics | 8.4.117 | YOLOv8 + RT-DETR dùng chung một API |
+| ultralytics | 8.4.117 | YOLOv8m |
+| transformers | 5.15.0 | D-FINE-N (`ustc-community/dfine-nano-coco`) |
+| timm | 1.0.28 | registry backbone mà transformers nạp D-FINE qua |
 | pycocotools | 2.0.11 | có sẵn wheel Windows, không cần build tool C++ |
 | numpy | 2.4.4 | không bị fiftyone hạ cấp xuống numpy 1.x |
 | opencv-python | 5.0.0.93 | xem cảnh báo bên dưới |

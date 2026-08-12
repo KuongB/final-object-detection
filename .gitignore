@@ -18,6 +18,10 @@ weights/*.pt
 weights/*.pth
 weights/*.onnx
 
+# Pretrained checkpoints ultralytics downloads into the working directory
+# (yolov8m.pt, rtdetr-l.pt). Needed to run, but re-downloaded automatically.
+/*.pt
+
 # --- Web app runtime ---
 webapp/backend/uploads/
 webapp/backend/outputs/
