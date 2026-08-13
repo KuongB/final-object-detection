@@ -19,6 +19,9 @@ runs/
 # The scored metrics they produce are kept in reports/results/evaluation_*.json.
 reports/results/detections_*.json
 
+# Console log of each evaluation run, appended to across runs.
+reports/results/evaluate_*.log
+
 # --- Model weights, wherever they land ---
 # Not anchored on purpose: ultralytics downloads its checkpoints into whatever
 # the current working directory happens to be - the repo root for scripts, and
