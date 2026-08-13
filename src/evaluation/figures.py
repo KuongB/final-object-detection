@@ -119,7 +119,13 @@ def per_class_ap(payload: dict, path: Path | None = None) -> Path:
     return path
 
 
-def _draw(ax, image, records, title: str) -> None:
+def draw_boxes(ax, image, records, title: str) -> None:
+    """Draw COCO-style records (`bbox` in xywh, `category_id`, optional `score`).
+
+    Public because the EDA notebook draws the same way; note that importing
+    this module sets matplotlib's backend to Agg, so a notebook should follow
+    the import with `%matplotlib inline`.
+    """
     from matplotlib.patches import Rectangle
 
     ax.imshow(image)
@@ -188,11 +194,11 @@ def qualitative(
             {"bbox": a["bbox"], "category_id": a["category_id"]}
             for a in record["annotations"]
         ]
-        _draw(axes[row][0], image, truth, f"ground truth ({len(truth)} hộp)")
+        draw_boxes(axes[row][0], image, truth, f"ground truth ({len(truth)} hộp)")
         for col, (key, grouped) in enumerate(detections.items(), start=1):
             found = grouped.get(record["image_id"], [])
             name = payload["models"][key]["display_name"]
-            _draw(axes[row][col], image, found, f"{name} ({len(found)} hộp)")
+            draw_boxes(axes[row][col], image, found, f"{name} ({len(found)} hộp)")
 
     fig.suptitle(
         f"Phát hiện trên tập {split} — ngưỡng score {threshold}", fontsize=10, y=0.999
