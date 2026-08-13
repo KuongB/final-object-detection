@@ -46,8 +46,19 @@ _RGB = {name: tuple(c / 255 for c in rgb) for name, rgb in CLASS_COLORS_RGB.item
 
 
 def _epoch_series(model_key: str) -> tuple[list[int], list[float]]:
-    """Validation mAP per epoch, from whichever schema the trainer wrote."""
-    path = RUNS_DIR / model_key / "history.json"
+    """Validation mAP per epoch, from whichever schema the trainer wrote.
+
+    The run directory comes from the index, not from the model key: a run
+    started with `--tag` lives elsewhere, and plotting `runs/<key>` would draw
+    a different run from the one the metrics beside it describe.
+    """
+    from src.config import PROJECT_ROOT
+    from src.training.artifacts import read_index
+
+    entry = read_index().get(model_key, {})
+    run_dir = PROJECT_ROOT / entry["run_dir"] if entry.get("run_dir") else RUNS_DIR / model_key
+
+    path = run_dir / "history.json"
     if not path.is_file():
         return [], []
     history = json.loads(path.read_text(encoding="utf-8"))
@@ -65,20 +76,25 @@ def learning_curves(payload: dict, path: Path | None = None) -> Path:
     path = path or FIGURES_DIR / "eval_learning_curves.png"
     fig, ax = plt.subplots(figsize=(8, 4.5), dpi=150)
 
+    longest = 0
     for key, result in payload["models"].items():
         epochs, values = _epoch_series(key)
         if not epochs:
             continue
+        longest = max(longest, epochs[-1])
+        label = f"{result['display_name']} ({epochs[-1]} epoch)"
         ax.plot(epochs, values, marker="o", markersize=3.5, linewidth=1.8,
-                color=MODEL_COLORS.get(key), label=result["display_name"])
+                color=MODEL_COLORS.get(key), label=label)
         # Mark where each model ended, since that is the checkpoint scored.
         ax.scatter([epochs[-1]], [values[-1]], s=55, zorder=5,
                    facecolor="white", edgecolor=MODEL_COLORS.get(key), linewidth=1.8)
 
     ax.set_xlabel("epoch")
     ax.set_ylabel("val mAP@[.5:.95]")
-    ax.set_title("Validation mAP trong 15 epoch", fontsize=11)
-    ax.set_xticks(range(1, 16))
+    ax.set_title("Validation mAP theo epoch", fontsize=11)
+    # Runs no longer share an epoch count, so derive the ticks.
+    step = max(1, longest // 16)
+    ax.set_xticks(range(step, longest + 1, step))
     ax.grid(alpha=0.25, linewidth=0.6)
     ax.legend(frameon=False, fontsize=9)
     ax.spines[["top", "right"]].set_visible(False)

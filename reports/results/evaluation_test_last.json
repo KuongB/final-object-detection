@@ -1,9 +1,9 @@
 {
  "split": "test",
  "checkpoint": "last",
- "generated_at": "2026-08-13T17:47:49+00:00",
+ "generated_at": "2026-08-13T19:02:04+00:00",
  "environment": {
-  "timestamp": "2026-08-13T17:47:49+00:00",
+  "timestamp": "2026-08-13T19:02:04+00:00",
   "platform": "Windows-10-10.0.26200-SP0",
   "python": "3.11.15",
   "torch": "2.13.0+cu126",
@@ -26,15 +26,15 @@
    "checkpoint": "last",
    "checkpoint_mb": 18.28,
    "training": {
-    "train_seconds": 1470.0,
-    "epochs_run": 15,
+    "train_seconds": 5384.4,
+    "epochs_run": 80,
     "steps_per_epoch": null,
-    "best_epoch": 15,
-    "val_mAP_50_95": 0.3015117156548337,
-    "median_epoch_seconds": 83.6,
+    "best_epoch": 44,
+    "val_mAP_50_95": 0.3044268615570395,
+    "median_epoch_seconds": 83.5,
     "peak_vram_gb": null,
     "config": {
-     "epochs": 15,
+     "epochs": 80,
      "batch": 16,
      "optimizer": "auto",
      "lr0": 0.01,
@@ -51,11 +51,11 @@
     }
    },
    "speed": {
-    "latency_ms_mean": 13.649,
-    "latency_ms_median": 13.222,
-    "latency_ms_p90": 16.779,
-    "latency_ms_min": 5.552,
-    "fps": 75.63,
+    "latency_ms_mean": 13.551,
+    "latency_ms_median": 13.213,
+    "latency_ms_p90": 15.418,
+    "latency_ms_min": 6.915,
+    "fps": 75.68,
     "iterations": 200
    },
    "test": {
@@ -97,7 +97,7 @@
      }
     }
    },
-   "eval_wall_seconds": 13.94,
+   "eval_wall_seconds": 11.15,
    "n_images": 310
   },
   "ssdlite": {
@@ -141,11 +141,11 @@
     }
    },
    "speed": {
-    "latency_ms_mean": 24.366,
-    "latency_ms_median": 23.694,
-    "latency_ms_p90": 28.893,
-    "latency_ms_min": 12.002,
-    "fps": 42.2,
+    "latency_ms_mean": 26.729,
+    "latency_ms_median": 26.833,
+    "latency_ms_p90": 33.37,
+    "latency_ms_min": 12.902,
+    "fps": 37.27,
     "iterations": 200
    },
    "test": {
@@ -187,7 +187,7 @@
      }
     }
    },
-   "eval_wall_seconds": 21.08,
+   "eval_wall_seconds": 19.72,
    "n_images": 310
   },
   "dfine": {
@@ -231,11 +231,11 @@
     }
    },
    "speed": {
-    "latency_ms_mean": 42.544,
-    "latency_ms_median": 42.284,
-    "latency_ms_p90": 47.012,
-    "latency_ms_min": 23.986,
-    "fps": 23.65,
+    "latency_ms_mean": 49.744,
+    "latency_ms_median": 46.444,
+    "latency_ms_p90": 67.988,
+    "latency_ms_min": 26.515,
+    "fps": 21.53,
     "iterations": 200
    },
    "test": {
@@ -277,7 +277,7 @@
      }
     }
    },
-   "eval_wall_seconds": 30.39,
+   "eval_wall_seconds": 29.56,
    "n_images": 310
   }
  }

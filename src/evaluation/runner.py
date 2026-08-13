@@ -140,10 +140,19 @@ def _speed(loaded, device: torch.device, iterations: int) -> dict:
 def _training_facts(model_key: str) -> dict:
     """What the run that produced this checkpoint actually did.
 
-    Read from `runs/<key>/history.json` rather than from the registry, because
-    the registry holds the *defaults* and a run may have overridden them.
+    Read from the run's own `history.json` rather than from the registry,
+    because the registry holds the *defaults* and a run may have overridden
+    them. The run directory comes from the index for the same reason
+    `resolve_checkpoint` uses it: a tagged run lives in `runs/<key>_<tag>`, and
+    assuming `runs/<key>` would describe a different run from the one scored.
     """
-    path = RUNS_DIR / model_key / "history.json"
+    from src.config import PROJECT_ROOT
+    from src.training.artifacts import read_index
+
+    entry = read_index().get(model_key, {})
+    run_dir = PROJECT_ROOT / entry["run_dir"] if entry.get("run_dir") else RUNS_DIR / model_key
+
+    path = run_dir / "history.json"
     if not path.is_file():
         return {}
 
