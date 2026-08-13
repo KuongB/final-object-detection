@@ -119,7 +119,25 @@ YOLO11s giảm nhẹ 0,0100. Nó xuất phát từ 0,2814, mức đã khá cao. 
 
 D-FINE-N giảm 0,2268, tương đương còn một phần sáu điểm ban đầu. Mốc chuẩn 0,2715 của nó cho thấy phần khởi tạo hoạt động đúng: kiến trúc này phát hiện được 5 lớp ở mức tương đương YOLO11s (0,2814) với 3,72 triệu tham số so với 9,41 triệu. Phần suy giảm đến từ quá trình huấn luyện.
 
-### 4.3 Khoảng cách giữa khả năng tìm và khả năng chấm điểm
+### 4.3 Val mAP và test mAP không nói cùng một điều
+
+Hai lượt huấn luyện YOLO11s cho thấy điều này rõ nhất:
+
+| | val mAP@[.5:.95] | test mAP@[.5:.95] | Thời gian |
+|---|---|---|---|
+| 15 epoch | 0,2883 | 0,2569 | 24,5 phút |
+| 64 epoch | 0,2904 | 0,2714 | 89,7 phút |
+| Chênh lệch | **+0,0021** | **+0,0145** | |
+
+Nếu chỉ nhìn val, phần huấn luyện thêm gần như không mang lại gì: 0,0021 sau 49 epoch. Trên test thì mức cải thiện là 0,0145, gấp bảy lần.
+
+Nguyên nhân nằm ở cách chia dữ liệu. Tập train và val đều được cắt ra từ COCO train2017, còn tập test lấy từ COCO val2017 — một đợt thu thập khác. Val vì vậy không độc lập với train về phân phối: nó đo mức khớp với dữ liệu huấn luyện nhiều hơn là đo khả năng khái quát. Trong 20 epoch cuối, val mAP đứng yên trong khoảng 0,284–0,290 nhưng mô hình vẫn tiếp tục thay đổi theo hướng khái quát hơn, và phần thay đổi đó chỉ hiện ra trên tập test.
+
+Điều này kéo theo một hệ quả về cơ chế dừng sớm. `patience=20` của ultralytics đếm theo val mAP, và nó đã dừng lượt huấn luyện ở epoch 64 vì đỉnh val rơi vào epoch 44. Nhưng số liệu test cho thấy phần huấn luyện sau epoch 44 vẫn có tác dụng. Với cách chia dữ liệu hiện tại, cơ chế dừng sớm đang dùng một thước đo không phản ánh đúng thứ cần tối ưu.
+
+Khoảng cách val trừ test ở cả ba mô hình đều nằm trong khoảng 0,02–0,03, nên đây là đặc điểm chung của bộ dữ liệu chứ không riêng YOLO11s. Vì lý do đó, mọi con số kết luận trong báo cáo này đều lấy từ tập test.
+
+### 4.4 Khoảng cách giữa khả năng tìm và khả năng chấm điểm
 
 Đặt cạnh nhau tỉ lệ AR@100 (khả năng tìm ra vật thể) và mAP (có tính đến độ tin cậy và độ khớp của hộp):
 
@@ -137,7 +155,7 @@ Một con số cụ thể hoá điều này: điểm tin cậy cao nhất mà D-
 
 Trong quá trình tìm nguyên nhân, các khả năng sau đã được kiểm tra và loại trừ: việc sao chép trọng số từ COCO (mốc chuẩn 0,2715 chứng minh nó đúng), định dạng nhãn đưa vào hàm mất mát (`class_labels` nằm trong khoảng 0–4, hộp ở dạng cxcywh chuẩn hoá trong [0,1]), chuẩn hoá ảnh đầu vào, và toàn bộ đường ống suy luận cùng ánh xạ lớp (cùng đường ống đó cho 0,2715 khi chưa huấn luyện). Nguyên nhân nằm trong quá trình tối ưu và chưa được xác định.
 
-### 4.4 Ảnh hưởng của kích thước ảnh đầu vào
+### 4.5 Ảnh hưởng của kích thước ảnh đầu vào
 
 AP trên vật thể nhỏ của SSDLite là 0,0014, gần như bằng không, trong khi AP trên vật thể lớn của nó đạt 0,3210, tức cùng bậc với YOLO11s (0,4100).
 
@@ -145,7 +163,7 @@ Nguyên nhân nằm ở kích thước đầu vào cố định 320×320 của k
 
 Đây cũng là lời giải thích cho phần lớn khoảng cách mAP tổng thể giữa SSDLite và YOLO11s: trên vật thể lớn hai bên khá gần nhau, chênh lệch tập trung ở dải nhỏ và trung bình. Theo thống kê ở notebook EDA, 26,4% instance trong tập huấn luyện thuộc nhóm nhỏ theo chuẩn COCO.
 
-### 4.5 Phân bố theo lớp
+### 4.6 Phân bố theo lớp
 
 Với SSDLite, `orange` (0,1989) cao hơn `apple` (0,0766) và `carrot` (0,0756) khoảng 2,6 lần. Cam trong tập dữ liệu này thường xuất hiện dưới dạng vật thể tròn, đơn lẻ, tương phản cao với nền; táo thường nằm thành đống trong sọt với ranh giới giữa các quả rất mờ, và cà rốt thường bị che khuất một phần hoặc nằm bó chồng lên nhau — cả hai đều là tình huống mà anchor cố định khó tách từng thể hiện riêng.
 
@@ -153,17 +171,17 @@ YOLO11s trải đều hơn: khoảng cách giữa lớp cao nhất (`orange` 0,3
 
 D-FINE-N thấp đều ở cả năm lớp (0,0250–0,0642), không có lớp nào nổi bật. Việc suy giảm xảy ra đồng đều chứ không tập trung vào một lớp cụ thể cho thấy nó không phải hiện tượng gắn với đặc điểm hình ảnh của một loại rau củ nào.
 
-### 4.6 Quan sát định tính
+### 4.7 Quan sát định tính
 
 ![Phát hiện trên tập test](figures/eval_qualitative.png)
 
 Ba ảnh được chọn theo phân vị mật độ hộp (thưa – trung bình – dày) thay vì lấy các ảnh dày nhất, vì những ảnh dày nhất trong tập test là quầy chợ 25 hộp và ảnh ghép lưới mà không mô hình nào xử lý được, chúng nói về tập dữ liệu nhiều hơn nói về mô hình. Ngưỡng hiển thị là 0,35.
 
-Ở hàng giữa (5 hộp thật), SSDLite và YOLO11s cùng đưa ra 5 hộp bao phủ các cụm bông cải. Ở hàng dưới (13 hộp thật, bông cải rải trên mặt bánh pizza), cả hai đều gom nhiều bông cải nhỏ liền kề thành một hộp lớn thay vì tách riêng. Đây là biểu hiện thị giác của cùng hiện tượng mà cột AP vật thể nhỏ ở mục 4.4 đã đo được bằng số.
+Ở hàng giữa (5 hộp thật), SSDLite và YOLO11s cùng đưa ra 5 hộp bao phủ các cụm bông cải. Ở hàng dưới (13 hộp thật, bông cải rải trên mặt bánh pizza), cả hai đều gom nhiều bông cải nhỏ liền kề thành một hộp lớn thay vì tách riêng. Đây là biểu hiện thị giác của cùng hiện tượng mà cột AP vật thể nhỏ ở mục 4.5 đã đo được bằng số.
 
-Các ô của D-FINE-N trống ở cả ba hàng. Đây không phải do mô hình không sinh ra dự đoán — nó vẫn xuất đủ 100 hộp mỗi ảnh — mà do toàn bộ điểm tin cậy đều dưới 0,35 như đã nêu ở mục 4.3.
+Các ô của D-FINE-N trống ở cả ba hàng. Đây không phải do mô hình không sinh ra dự đoán — nó vẫn xuất đủ 100 hộp mỗi ảnh — mà do toàn bộ điểm tin cậy đều dưới 0,35 như đã nêu ở mục 4.4.
 
-### 4.7 Tốc độ suy luận
+### 4.8 Tốc độ suy luận
 
 Thứ tự độ trễ (YOLO11s 6,6 ms < SSDLite 12,4 ms < D-FINE-N 21,4 ms) không đi cùng thứ tự số tham số (SSDLite 2,26 M < D-FINE-N 3,72 M < YOLO11s 9,41 M). YOLO11s có số tham số gấp bốn lần SSDLite nhưng chạy nhanh gần gấp đôi.
 
@@ -176,7 +194,7 @@ Cả ba đều nằm trong ngưỡng dùng được cho ứng dụng web nhận 
 ## 5. Ghi chú về giới hạn của đợt đo này
 
 - **Tập test có 310 ảnh.** Đây là cỡ mẫu nhỏ; chênh lệch nhỏ giữa hai lần đo trên tập này không mang nhiều ý nghĩa thống kê.
-- **Tập val không độc lập với tập train về phân phối.** Cả hai được cắt ra từ COCO train2017, còn test lấy từ COCO val2017. Khoảng cách khoảng 0,03–0,04 giữa val mAP và test mAP ở cả ba mô hình phản ánh điều này. Đây cũng là lý do mọi con số trong báo cáo đều lấy từ tập test.
+- **Tập val không độc lập với tập train về phân phối** (xem mục 4.3). Mọi con số kết luận đều lấy từ tập test vì lý do này.
 - **Checkpoint COCO gốc có một chút lợi thế.** Ultralytics và các tác giả D-FINE huấn luyện trên COCO train2017 và kiểm định trên COCO val2017, tức là nguồn của tập test ở đây. Họ không huấn luyện trên đó, nhưng có tinh chỉnh siêu tham số dựa trên nó. Mức thiên vị này khó định lượng.
 - **Số của D-FINE-N phản ánh trạng thái cuối của một quá trình huấn luyện đi xuống**, không phản ánh năng lực của kiến trúc D-FINE nói chung. Mốc chuẩn ở mục 3.1 là con số đại diện hơn cho kiến trúc này.
 - **Các tham số huấn luyện được lấy nguyên từ registry trong `src/config.py`** và chưa qua tinh chỉnh riêng cho tập dữ liệu 5 lớp này.
