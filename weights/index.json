@@ -1,0 +1,42 @@
+{
+ "ssdlite": {
+  "display_name": "SSDLite320-MobileNetV3-Large",
+  "framework": "torchvision",
+  "num_classes": 6,
+  "imgsz": 320,
+  "base_checkpoint": "SSDLite320_MobileNet_V3_Large_Weights.COCO_V1",
+  "warm_start": true,
+  "params": 2261960,
+  "val_mAP_50_95": 0.15137,
+  "weights": "weights/ssdlite/best.pt",
+  "run_dir": "runs/ssdlite",
+  "promoted_at": "2026-08-13T11:34:57+00:00"
+ },
+ "yolo11s": {
+  "display_name": "YOLO11s",
+  "framework": "ultralytics",
+  "num_classes": 5,
+  "imgsz": 640,
+  "base_checkpoint": "yolo11s.pt",
+  "warm_start": true,
+  "params": 9414735,
+  "val_mAP_50_95": 0.30443,
+  "weights": "weights/yolo11s/best.pt",
+  "run_dir": "runs/yolo11s_deep",
+  "promoted_at": "2026-08-13T17:22:57+00:00"
+ },
+ "dfine": {
+  "display_name": "D-FINE-N",
+  "framework": "transformers",
+  "num_classes": 5,
+  "imgsz": 640,
+  "base_checkpoint": "ustc-community/dfine-nano-coco",
+  "warm_start": true,
+  "params": 3722121,
+  "val_mAP_50_95": 0.12765,
+  "weights": "weights/dfine/best.pt",
+  "run_dir": "runs/dfine",
+  "promoted_at": "2026-08-13T12:42:17+00:00",
+  "hf_dir": "weights/dfine/hf"
+ }
+}

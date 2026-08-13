@@ -1,0 +1,104 @@
+{
+ "split": "test",
+ "checkpoint": "best",
+ "generated_at": "2026-08-13T17:31:49+00:00",
+ "environment": {
+  "timestamp": "2026-08-13T17:31:49+00:00",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "python": "3.11.15",
+  "torch": "2.13.0+cu126",
+  "cuda_available": true,
+  "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "vram_gb": 8.0,
+  "capability": "sm_89",
+  "cuda": "12.6"
+ },
+ "models": {
+  "yolo11s": {
+   "model_key": "yolo11s",
+   "display_name": "YOLO11s",
+   "family": "YOLO (one-stage, anchor-free)",
+   "framework": "ultralytics",
+   "imgsz": 640,
+   "params_total": 9414735,
+   "params_trainable": 0,
+   "params_millions": 9.415,
+   "checkpoint": "best",
+   "checkpoint_mb": 18.28,
+   "training": {
+    "train_seconds": 1470.0,
+    "epochs_run": 15,
+    "steps_per_epoch": null,
+    "best_epoch": 15,
+    "val_mAP_50_95": 0.3015117156548337,
+    "median_epoch_seconds": 83.6,
+    "peak_vram_gb": null,
+    "config": {
+     "epochs": 15,
+     "batch": 16,
+     "optimizer": "auto",
+     "lr0": 0.01,
+     "lrf": 0.01,
+     "momentum": 0.937,
+     "weight_decay": 0.0005,
+     "warmup_epochs": 3.0,
+     "cos_lr": true,
+     "amp": true,
+     "workers": 2,
+     "patience": 20,
+     "close_mosaic": 10,
+     "imgsz": 640
+    }
+   },
+   "speed": {
+    "latency_ms_mean": 5.941,
+    "latency_ms_median": 5.891,
+    "latency_ms_p90": 6.219,
+    "latency_ms_min": 5.634,
+    "fps": 169.74,
+    "iterations": 50
+   },
+   "test": {
+    "split": "test",
+    "n_detections": 25684,
+    "n_images": 310,
+    "mAP_50_95": 0.2641991352980479,
+    "mAP_50": 0.40208954414336945,
+    "mAP_75": 0.2895978783320954,
+    "mAP_small": 0.07835369327473132,
+    "mAP_medium": 0.31148926146880485,
+    "mAP_large": 0.38894741783668124,
+    "AR_max1": 0.13597705050121556,
+    "AR_max10": 0.41731602947872665,
+    "AR_max100": 0.5599442920401274,
+    "AR_small": 0.3322186994942102,
+    "AR_medium": 0.6156112009108702,
+    "AR_large": 0.6816711380276597,
+    "per_class": {
+     "apple": {
+      "AP_50_95": 0.21425735923365666,
+      "AP_50": 0.3098114870487515
+     },
+     "banana": {
+      "AP_50_95": 0.2556462212985061,
+      "AP_50": 0.4013352213380336
+     },
+     "broccoli": {
+      "AP_50_95": 0.2445244856642534,
+      "AP_50": 0.4261291798761969
+     },
+     "carrot": {
+      "AP_50_95": 0.2589760965975872,
+      "AP_50": 0.40890508382624774
+     },
+     "orange": {
+      "AP_50_95": 0.34759151369623614,
+      "AP_50": 0.46426674862761724
+     }
+    }
+   },
+   "eval_wall_seconds": 7.58,
+   "n_images": 310
+  }
+ }
+}
