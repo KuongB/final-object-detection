@@ -38,5 +38,19 @@
   "run_dir": "runs/dfine",
   "promoted_at": "2026-08-13T12:42:17+00:00",
   "hf_dir": "weights/dfine/hf"
+ },
+ "yolo26m": {
+  "display_name": "YOLO26m (Open Images)",
+  "framework": "ultralytics",
+  "num_classes": 5,
+  "imgsz": 640,
+  "base_checkpoint": "yolo26m.pt",
+  "warm_start": true,
+  "params": 21780598,
+  "val_mAP_50_95": 0.3335,
+  "val_dataset": "open-images-v7",
+  "weights": "weights/yolo26m/best.pt",
+  "run_dir": "runs/yolo26m_oi",
+  "promoted_at": "2026-08-21T18:08:12+00:00"
  }
 }

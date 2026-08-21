@@ -200,6 +200,35 @@ MODELS: dict[str, dict] = {
             "close_mosaic": 10,
         },
     },
+    # Huan luyen tren Kaggle bang notebooks/04_kaggle_yolo26m_openimages.ipynb,
+    # tren Open Images V7 chu khong phai tap con COCO nhu ba model kia. Dang ky o
+    # day de duong danh gia nap duoc no; `TRAINERS` co tinh khong co key nay vi
+    # `train_yolo.py` gan cung MODEL_KEY = "yolo11s", nen `--model yolo26m` khi
+    # huan luyen se bao loi ro rang thay vi am tham train nham model.
+    "yolo26m": {
+        "display_name": "YOLO26m (Open Images)",
+        "family": "YOLO (one-stage, anchor-free, NMS-free)",
+        "framework": "ultralytics",
+        "checkpoint": "yolo26m.pt",
+        "imgsz": 640,
+        "train_kwargs": {
+            "epochs": 60,
+            "batch": 16,
+            # Dat thang thay vi "auto": ultralytics bo qua lr0/momentum khi
+            # optimizer="auto", nen cong thuc cua YOLO26 khong co tac dung.
+            "optimizer": "AdamW",
+            "lr0": 0.001,
+            "lrf": 0.01,
+            "momentum": 0.948,
+            "weight_decay": 0.00027,
+            "warmup_epochs": 0.99,
+            "cos_lr": True,
+            "amp": True,
+            "workers": 8,
+            "patience": 20,
+            "close_mosaic": 10,
+        },
+    },
     "dfine": {
         "display_name": "D-FINE-N",
         "family": "Transformer (DETR-based, end-to-end)",

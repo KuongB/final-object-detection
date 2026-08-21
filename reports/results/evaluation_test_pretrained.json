@@ -1,9 +1,9 @@
 {
  "split": "test",
  "checkpoint": "pretrained",
- "generated_at": "2026-08-13T17:37:05+00:00",
+ "generated_at": "2026-08-21T18:11:34+00:00",
  "environment": {
-  "timestamp": "2026-08-13T17:37:05+00:00",
+  "timestamp": "2026-08-21T18:11:34+00:00",
   "platform": "Windows-10-10.0.26200-SP0",
   "python": "3.11.15",
   "torch": "2.13.0+cu126",
@@ -198,6 +198,68 @@
     }
    },
    "eval_wall_seconds": 18.73,
+   "n_images": 310
+  },
+  "yolo26m": {
+   "model_key": "yolo26m",
+   "display_name": "YOLO26m (Open Images)",
+   "family": "YOLO (one-stage, anchor-free, NMS-free)",
+   "framework": "ultralytics",
+   "imgsz": 640,
+   "params_total": 20411132,
+   "params_trainable": 0,
+   "params_millions": 20.411,
+   "checkpoint": "pretrained",
+   "checkpoint_mb": 41.98,
+   "training": {},
+   "speed": {
+    "latency_ms_mean": 17.562,
+    "latency_ms_median": 16.887,
+    "latency_ms_p90": 21.372,
+    "latency_ms_min": 10.715,
+    "fps": 59.22,
+    "iterations": 50
+   },
+   "test": {
+    "split": "test",
+    "n_detections": 16809,
+    "n_images": 310,
+    "mAP_50_95": 0.30633343799827273,
+    "mAP_50": 0.44963187366488355,
+    "mAP_75": 0.33158739496949546,
+    "mAP_small": 0.09116727530345757,
+    "mAP_medium": 0.33286590507989317,
+    "mAP_large": 0.47930588919985695,
+    "AR_max1": 0.13808764730350767,
+    "AR_max10": 0.4455880701937305,
+    "AR_max100": 0.5995317554464721,
+    "AR_small": 0.3434699863491503,
+    "AR_medium": 0.633887382694463,
+    "AR_large": 0.7715446443098617,
+    "per_class": {
+     "apple": {
+      "AP_50_95": 0.2732606905920275,
+      "AP_50": 0.38448896890881007
+     },
+     "banana": {
+      "AP_50_95": 0.32200965373991375,
+      "AP_50": 0.4913047214287282
+     },
+     "broccoli": {
+      "AP_50_95": 0.27985900469057223,
+      "AP_50": 0.4614397925987424
+     },
+     "carrot": {
+      "AP_50_95": 0.3072704816729733,
+      "AP_50": 0.4652588712832234
+     },
+     "orange": {
+      "AP_50_95": 0.3492673592958769,
+      "AP_50": 0.4456670141049136
+     }
+    }
+   },
+   "eval_wall_seconds": 11.43,
    "n_images": 310
   }
  }

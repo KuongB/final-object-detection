@@ -1,9 +1,9 @@
 {
  "split": "test",
  "checkpoint": "best",
- "generated_at": "2026-08-13T17:31:49+00:00",
+ "generated_at": "2026-08-21T18:10:00+00:00",
  "environment": {
-  "timestamp": "2026-08-13T17:31:49+00:00",
+  "timestamp": "2026-08-21T18:10:00+00:00",
   "platform": "Windows-10-10.0.26200-SP0",
   "python": "3.11.15",
   "torch": "2.13.0+cu126",
@@ -26,15 +26,15 @@
    "checkpoint": "best",
    "checkpoint_mb": 18.28,
    "training": {
-    "train_seconds": 1470.0,
-    "epochs_run": 15,
+    "train_seconds": 5384.4,
+    "epochs_run": 80,
     "steps_per_epoch": null,
-    "best_epoch": 15,
-    "val_mAP_50_95": 0.3015117156548337,
-    "median_epoch_seconds": 83.6,
+    "best_epoch": 44,
+    "val_mAP_50_95": 0.3044268615570395,
+    "median_epoch_seconds": 83.5,
     "peak_vram_gb": null,
     "config": {
-     "epochs": 15,
+     "epochs": 80,
      "batch": 16,
      "optimizer": "auto",
      "lr0": 0.01,
@@ -51,12 +51,12 @@
     }
    },
    "speed": {
-    "latency_ms_mean": 5.941,
-    "latency_ms_median": 5.891,
-    "latency_ms_p90": 6.219,
-    "latency_ms_min": 5.634,
-    "fps": 169.74,
-    "iterations": 50
+    "latency_ms_mean": 13.937,
+    "latency_ms_median": 13.601,
+    "latency_ms_p90": 15.97,
+    "latency_ms_min": 9.036,
+    "fps": 73.53,
+    "iterations": 100
    },
    "test": {
     "split": "test",
@@ -97,7 +97,249 @@
      }
     }
    },
-   "eval_wall_seconds": 7.58,
+   "eval_wall_seconds": 10.28,
+   "n_images": 310
+  },
+  "ssdlite": {
+   "model_key": "ssdlite",
+   "display_name": "SSDLite320-MobileNetV3-Large",
+   "family": "CNN (one-stage, anchor-based)",
+   "framework": "torchvision",
+   "imgsz": 320,
+   "params_total": 2261960,
+   "params_trainable": 2261960,
+   "params_millions": 2.262,
+   "checkpoint": "best",
+   "checkpoint_mb": 8.9,
+   "training": {
+    "train_seconds": 1784.1,
+    "epochs_run": 15,
+    "steps_per_epoch": 181,
+    "best_epoch": 13,
+    "val_mAP_50_95": 0.1513698128825172,
+    "median_epoch_seconds": 96.5,
+    "peak_vram_gb": 1.807,
+    "config": {
+     "epochs": 15,
+     "batch_size": 32,
+     "optimizer": "sgd",
+     "lr": 0.01,
+     "momentum": 0.9,
+     "weight_decay": 4e-05,
+     "warmup_epochs": 3,
+     "scheduler": "cosine",
+     "amp": true,
+     "workers": 2,
+     "ema_decay": 0.999,
+     "clip_grad_norm": 10.0,
+     "framework": "torchvision",
+     "num_classes": 6,
+     "imgsz": 320,
+     "base_checkpoint": "SSDLite320_MobileNet_V3_Large_Weights.COCO_V1",
+     "warm_start": true,
+     "params": 2261960
+    }
+   },
+   "speed": {
+    "latency_ms_mean": 23.417,
+    "latency_ms_median": 25.551,
+    "latency_ms_p90": 27.413,
+    "latency_ms_min": 13.128,
+    "fps": 39.14,
+    "iterations": 100
+   },
+   "test": {
+    "split": "test",
+    "n_detections": 31000,
+    "n_images": 310,
+    "mAP_50_95": 0.12376395502128598,
+    "mAP_50": 0.23207912003481104,
+    "mAP_75": 0.1179060857946354,
+    "mAP_small": 0.0013065821924319295,
+    "mAP_medium": 0.07938408325113307,
+    "mAP_large": 0.3159787267541377,
+    "AR_max1": 0.09234793437260656,
+    "AR_max10": 0.21276937967042206,
+    "AR_max100": 0.27519870720857487,
+    "AR_small": 0.014891487822522304,
+    "AR_medium": 0.24511375632083662,
+    "AR_large": 0.5737843321582453,
+    "per_class": {
+     "apple": {
+      "AP_50_95": 0.07735656735646247,
+      "AP_50": 0.13464256410366687
+     },
+     "banana": {
+      "AP_50_95": 0.13448713350695085,
+      "AP_50": 0.2858222481311485
+     },
+     "broccoli": {
+      "AP_50_95": 0.13613231154788882,
+      "AP_50": 0.2874224845932786
+     },
+     "carrot": {
+      "AP_50_95": 0.07556224883498414,
+      "AP_50": 0.16004916183678974
+     },
+     "orange": {
+      "AP_50_95": 0.19528151386014359,
+      "AP_50": 0.2924591415091715
+     }
+    }
+   },
+   "eval_wall_seconds": 16.0,
+   "n_images": 310
+  },
+  "dfine": {
+   "model_key": "dfine",
+   "display_name": "D-FINE-N",
+   "family": "Transformer (DETR-based, end-to-end)",
+   "framework": "transformers",
+   "imgsz": 640,
+   "params_total": 3722121,
+   "params_trainable": 3722121,
+   "params_millions": 3.722,
+   "checkpoint": "best",
+   "checkpoint_mb": 14.54,
+   "training": {
+    "train_seconds": 2530.6,
+    "epochs_run": 15,
+    "steps_per_epoch": 362,
+    "best_epoch": 1,
+    "val_mAP_50_95": 0.1276507419478009,
+    "median_epoch_seconds": 140.2,
+    "peak_vram_gb": 3.093,
+    "config": {
+     "epochs": 15,
+     "batch_size": 16,
+     "optimizer": "adamw",
+     "lr": 0.00025,
+     "backbone_lr": 2.5e-05,
+     "weight_decay": 0.0001,
+     "warmup_epochs": 2,
+     "scheduler": "cosine",
+     "amp": true,
+     "workers": 2,
+     "ema_decay": 0.999,
+     "clip_grad_norm": 0.1,
+     "framework": "transformers",
+     "num_classes": 5,
+     "imgsz": 640,
+     "base_checkpoint": "ustc-community/dfine-nano-coco",
+     "warm_start": true,
+     "params": 3722121
+    }
+   },
+   "speed": {
+    "latency_ms_mean": 42.712,
+    "latency_ms_median": 42.531,
+    "latency_ms_p90": 47.126,
+    "latency_ms_min": 27.937,
+    "fps": 23.51,
+    "iterations": 100
+   },
+   "test": {
+    "split": "test",
+    "n_detections": 31000,
+    "n_images": 310,
+    "mAP_50_95": 0.09279043876812419,
+    "mAP_50": 0.17898467634062334,
+    "mAP_75": 0.08415735997655881,
+    "mAP_small": 0.01944308739565482,
+    "mAP_medium": 0.13022803783453069,
+    "mAP_large": 0.2209179171090719,
+    "AR_max1": 0.10275647740718068,
+    "AR_max10": 0.3097797887342509,
+    "AR_max100": 0.504392853648099,
+    "AR_small": 0.2100758010406743,
+    "AR_medium": 0.5378097007965127,
+    "AR_large": 0.7242551628551628,
+    "per_class": {
+     "apple": {
+      "AP_50_95": 0.0843414786211621,
+      "AP_50": 0.14054157714419127
+     },
+     "banana": {
+      "AP_50_95": 0.12390163801305577,
+      "AP_50": 0.2629126163440668
+     },
+     "broccoli": {
+      "AP_50_95": 0.07425921682551047,
+      "AP_50": 0.1515770338150456
+     },
+     "carrot": {
+      "AP_50_95": 0.09647605119516221,
+      "AP_50": 0.20652208131481503
+     },
+     "orange": {
+      "AP_50_95": 0.08497380918573033,
+      "AP_50": 0.13337007308499793
+     }
+    }
+   },
+   "eval_wall_seconds": 24.49,
+   "n_images": 310
+  },
+  "yolo26m": {
+   "model_key": "yolo26m",
+   "display_name": "YOLO26m (Open Images)",
+   "family": "YOLO (one-stage, anchor-free, NMS-free)",
+   "framework": "ultralytics",
+   "imgsz": 640,
+   "params_total": 20353307,
+   "params_trainable": 0,
+   "params_millions": 20.353,
+   "checkpoint": "best",
+   "checkpoint_mb": 41.98,
+   "training": {},
+   "speed": {
+    "latency_ms_mean": 17.719,
+    "latency_ms_median": 16.914,
+    "latency_ms_p90": 22.404,
+    "latency_ms_min": 10.69,
+    "fps": 59.12,
+    "iterations": 100
+   },
+   "test": {
+    "split": "test",
+    "n_detections": 11391,
+    "n_images": 310,
+    "mAP_50_95": 0.13528308371120096,
+    "mAP_50": 0.21624180943933297,
+    "mAP_75": 0.13910755331099506,
+    "mAP_small": 0.021417484596026277,
+    "mAP_medium": 0.13214198271874558,
+    "mAP_large": 0.2785045472513014,
+    "AR_max1": 0.08935404590992191,
+    "AR_max10": 0.2649035403212325,
+    "AR_max100": 0.34114089458714486,
+    "AR_small": 0.12823430619689621,
+    "AR_medium": 0.3591235997614523,
+    "AR_large": 0.5079923468619121,
+    "per_class": {
+     "apple": {
+      "AP_50_95": 0.0877615238059628,
+      "AP_50": 0.11824142453625067
+     },
+     "banana": {
+      "AP_50_95": 0.10946589659998351,
+      "AP_50": 0.19404352649205805
+     },
+     "broccoli": {
+      "AP_50_95": 0.13102361958469366,
+      "AP_50": 0.25791748515945856
+     },
+     "carrot": {
+      "AP_50_95": 0.10200921083382107,
+      "AP_50": 0.18284013952432676
+     },
+     "orange": {
+      "AP_50_95": 0.2461551677315437,
+      "AP_50": 0.32816647148457073
+     }
+    }
+   },
+   "eval_wall_seconds": 10.73,
    "n_images": 310
   }
  }

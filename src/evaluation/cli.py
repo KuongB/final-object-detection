@@ -15,7 +15,6 @@ from pathlib import Path
 
 from src.config import RESULTS_DIR, SPLITS
 from src.evaluation.runner import format_summary, run_evaluation
-from src.training import TRAINERS
 from src.training.artifacts import read_index
 
 
@@ -50,8 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    # No `choices=`: what can be *evaluated* is whatever weights/index.json
+    # holds, which is not the same set as what can be *trained* (`TRAINERS`).
+    # A model trained elsewhere and promoted here belongs to the first set only.
+    # `main` validates against the index and lists what is available on a miss.
     parser.add_argument(
-        "--model", action="append", choices=[*TRAINERS, "all"], default=None,
+        "--model", action="append", default=None, metavar="KEY",
         help="repeatable; defaults to every model present in weights/index.json",
     )
     parser.add_argument("--split", default="test", choices=SPLITS,
