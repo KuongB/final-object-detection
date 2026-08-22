@@ -32,8 +32,8 @@ reports/results/evaluate_*.log
 *.safetensors
 
 # --- Web app runtime ---
-webapp/backend/uploads/
-webapp/backend/outputs/
+# The app keeps uploads and camera frames in memory; only the sample videos
+# a demo might drop into webapp/samples/ are worth excluding.
 webapp/samples/*.mp4
 
 # --- FiftyOne / Ultralytics local state ---

@@ -1,6 +1,6 @@
 # Trạng thái dự án
 
-Cập nhật: 2026-08-21. File này tóm tắt để bắt đầu một phiên làm việc mới mà không phải đọc lại lịch sử.
+Cập nhật: 2026-08-22. File này tóm tắt để bắt đầu một phiên làm việc mới mà không phải đọc lại lịch sử.
 
 ## Đề bài
 
@@ -15,7 +15,7 @@ Nộp: mã nguồn, trọng số, dataset, báo cáo. Đóng gói một file ZIP
 
 **Yêu cầu 1: xong.** Bốn mô hình đã huấn luyện và đánh giá, báo cáo ở `reports/evaluation.md`.
 
-**Yêu cầu 2: chưa bắt đầu.** `webapp/backend` và `webapp/frontend` đang trống. Kế hoạch ở mục cuối file này.
+**Yêu cầu 2: xong.** Ứng dụng web chạy được, hai chức năng: tải ảnh lên, và camera thời gian thực. Chi tiết ở mục cuối file này.
 
 ## Môi trường
 
@@ -89,6 +89,7 @@ scripts/03_verify_dataset.py  đối chiếu nhãn YOLO và COCO
 scripts/04_check_images.py    kiểm tra ảnh hỏng
 scripts/10_train.py           -> src/training/cli.py
 scripts/20_evaluate.py        -> src/evaluation/cli.py
+scripts/30_serve.py           -> src/webapp/cli.py
 notebooks/01_eda.ipynb        EDA, đã chạy sẵn kết quả
 notebooks/02_eval.ipynb       đánh giá 3 mô hình + so sánh 2 lượt YOLO11s
 notebooks/04_kaggle_yolo26m_openimages.ipynb      bản chạy được trên Kaggle
@@ -101,6 +102,7 @@ notebooks/04_kaggle_yolo26m_openimages_run.ipynb  bản đã chạy, giữ log
 python scripts/10_train.py --model all --epochs 15
 python scripts/20_evaluate.py --model all --split test --checkpoint last
 python scripts/20_evaluate.py --model all --split test --checkpoint pretrained
+python scripts/30_serve.py                    # rồi mở http://localhost:8000
 ```
 
 `--checkpoint` nhận `last`, `best`, hoặc `pretrained`. `--model` nhận key bất kỳ có trong `weights/index.json`.
@@ -153,37 +155,81 @@ Bốn điều phải nhớ, đều do chạy thử mà biết:
 
 Kết quả lượt đã chạy: 60/60 epoch, 123,3 phút trên Tesla T4, VRAM đỉnh 9,04 GB (còn dư, batch nâng lên 24–32 được), 2.755 ảnh train / 567 val.
 
-## Kế hoạch ứng dụng web (Yêu cầu 2)
+## Ứng dụng web (Yêu cầu 2) — đã xong
 
-**Model đã chốt: `yolo26m.pt` gốc kèm lọc `classes=[46,47,49,50,51]`** rồi ánh xạ về 5 lớp. Lý do ở mục "Kết quả" — nó đạt điểm cao nhất trong mọi phương án đã đo.
+**Model: `yolo26m.pt` gốc**, lọc 5 lớp từ 80 rồi ánh xạ về `apple/banana/broccoli/carrot/orange`. Lý do ở mục "Kết quả" — nó đạt điểm cao nhất trong mọi phương án đã đo. Giao diện tiếng Anh, không có dropdown chọn model.
 
-### Giai đoạn 1 — Tải ảnh lên và nhận diện
+### Chạy
+
+```bash
+python scripts/30_serve.py                    # http://localhost:8000
+python scripts/30_serve.py --port 8080 --device cpu
+```
+
+Phải mở bằng **`localhost`**. Trình duyệt chỉ cấp camera trong secure context, nên vào bằng IP LAN (`http://192.168.x.x:8000`) thì tab Live sẽ bị chặn — trang tự hiện cảnh báo khi gặp trường hợp đó.
+
+### File
 
 ```
-src/webapp/detector.py      nap model, suy luan, ve hop   (logic)
-webapp/backend/app.py       FastAPI, 2 route              (mong)
-webapp/frontend/index.html  mot trang, JS thuan
-scripts/30_serve.py         launcher
+src/webapp/detector.py    nạp model, suy luận, đếm số lượng
+src/webapp/drawing.py     vẽ hộp bằng PIL + mã hoá data URL
+src/webapp/app.py         FastAPI, lifespan + 4 route
+src/webapp/cli.py         argparse + uvicorn
+scripts/30_serve.py       launcher
+webapp/frontend/          index.html + static/{app.js,style.css}, JS thuần, không cần build
+webapp/samples/           4 ảnh test (3 ngang, 1 dọc), để chạy demo được khi chưa giải nén data/
 ```
+
+Lệch với phác thảo cũ: FastAPI nằm ở `src/webapp/app.py` chứ không phải `webapp/backend/app.py`, vì route là logic. Thư mục `webapp/backend/` rỗng đã bỏ cùng hai dòng `.gitignore` tương ứng.
 
 | Route | Việc |
 |---|---|
-| `GET /` | Trả trang HTML |
-| `POST /detect` | Nhận ảnh + ngưỡng, trả JSON: ảnh đã vẽ hộp (base64), danh sách vật thể, số lượng theo lớp |
+| `GET /` | trang HTML |
+| `GET /api/meta` | 5 lớp, bảng màu, ngưỡng mặc định, thông tin model, danh sách ảnh mẫu |
+| `POST /api/detect` | ảnh + ngưỡng → JSON kèm ảnh đã vẽ hộp (data URL), danh sách vật thể, số lượng theo lớp |
+| `WS /ws/detect` | khung JPEG vào, **chỉ toạ độ** ra — trình duyệt tự vẽ overlay lên canvas |
 
-- Model nạp **một lần** lúc khởi động qua `lifespan` của FastAPI
-- Tái dùng `load_pretrained()` trong `src/evaluation/runner.py`
-- Vẽ hộp bằng `CLASS_COLORS_RGB` trong `src/config.py` để màu khớp báo cáo và notebook
-- Giao diện: kéo thả ảnh, ảnh gốc và ảnh nhận diện cạnh nhau, bảng đếm theo lớp, thanh trượt ngưỡng (mặc định 0,35), hiện thời gian suy luận
-- JS thuần, không cần bước build — người chấm chỉ cần `uvicorn` là chạy được
+Model nạp một lần trong `lifespan`, dùng lại `load_pretrained()` ở `src/evaluation/runner.py` nên bảng ánh xạ COCO-80 → 5 lớp chỉ tồn tại một chỗ. Màu lấy từ `CLASS_COLORS_RGB` và phát qua `/api/meta`, nên overlay của trình duyệt, ảnh server vẽ và hình trong báo cáo không thể lệch nhau. Suy luận là lời gọi chặn nên cả hai route đều đi qua `run_in_threadpool`.
 
-Gói cần thiết đã có trong `requirements.txt`: `fastapi`, `uvicorn[standard]`, `python-multipart`, `jinja2`, `aiofiles`.
+### Số đo (RTX 4060 Laptop, đo trên máy này)
 
-### Giai đoạn 2 — Camera laptop (làm sau)
+| | |
+|---|---|
+| Suy luận yolo26m, batch 1 | 20,9 ms median (47,9 fps), VRAM đỉnh 0,22 / 8,59 GB |
+| WebSocket end-to-end | 29,9 ms round trip median, p95 36,3 ms → ~33 fps |
+| Request đầu sau khởi động | 84 ms, rồi về ~20 ms |
 
-Trình duyệt lấy camera qua `getUserMedia`, chụp khung hình mỗi ~80 ms, gửi lên `/detect`. Tái dùng toàn bộ backend, đạt khoảng 12–15 khung/giây trên máy local.
+GPU thừa sức, **không cần GPU serverless** (Modal hay tương tự). Ba mức imgsz 320/480/640 cho cùng một thời gian, nghĩa là ~21 ms đó gần như toàn bộ là tiền/hậu xử lý phía CPU của ultralytics.
 
-Hướng thay thế: xuất ONNX và chạy hẳn trong trình duyệt bằng `onnxruntime-web`. YOLO26 **không cần NMS** nên hậu xử lý trong JS chỉ là lọc theo ngưỡng — khả thi hơn nhiều so với YOLO11.
+Đã bỏ phương án ONNX chạy trong trình duyệt: phải viết lại letterbox và giải mã đầu ra YOLO26 bằng JS, mọi sai lệch nhỏ sẽ âm thầm cho kết quả khác báo cáo, lại phải tải ~80 MB về máy khách.
+
+### Sáu cạm bẫy, đều do chạy thử mà biết
+
+**1. `rect=False` là bắt buộc.** Ultralytics letterbox ảnh đơn chỉ tới bội số stride gần nhất (640×480), còn lúc đánh giá ảnh đi theo batch 16 lẫn kích thước nên bị đệm thành vuông 640×640. Hai cách cho kết quả khác nhau trên **62/310** ảnh test, lệch tới 3 vật thể — `000000061658.jpg` ra 7 broccoli kiểu chữ nhật, 10 kiểu vuông. Báo cáo đo bằng kiểu vuông. Sau khi ép `rect=False`: **0/310 ảnh lệch**.
+
+**2. Ultralytics coi mảng numpy là BGR.** `np.array(pil)` (RGB) làm `000000002149.jpg` tụt từ 3 xuống 1 hộp, không báo lỗi gì. Phải truyền thẳng đối tượng PIL.
+
+**3. WebSocket phải trả lời mọi khung, kể cả khung hỏng.** Client chỉ gửi khung kế sau khi nhận kết quả khung trước (đó là cơ chế áp lực ngược). Bỏ qua khung hỏng mà không trả lời sẽ làm camera đứng im vĩnh viễn chứ không phải bỏ một khung.
+
+**4. Warmup lúc khởi động.** Không có nó, request đầu tốn 149 ms, và `describe()` báo 21,9 M tham số trước khi ultralytics gộp BatchNorm vào convolution, 20,41 M sau đó — cùng một model, đếm ở hai thời điểm. 20,41 M mới là con số báo cáo dùng.
+
+**5. Khung ảnh phải tính bằng JS, CSS không làm được.** Để `1fr 1fr` thì ảnh dọc nằm trong khung ngang, thừa ~150 px trắng mỗi bên. CSS thuần bó tay: `max-height` chỉ chặn ảnh *hiển thị* cao bao nhiêu, còn bề rộng khung vẫn được bố cục theo kích thước gốc của ảnh — đúng chỗ hở ra. `app.js::fitStage` tính bề rộng cột từ `data.width/height` mà API đã trả về, đặt `gridTemplateColumns` theo px và nghe `resize`. Đo lại: thừa 1 px mỗi bên, đúng bằng đường viền.
+
+**6. Thuộc tính `hidden` của HTML thua CSS.** `hidden` chỉ là `display: none` trong stylesheet của trình duyệt, nên bất kỳ quy tắc nào của mình đặt `display` đều thắng nó — và có ba quy tắc như vậy (`.busy`, `.dropzone-empty`, `.dropzone img`). Hậu quả: lớp loading vẫn đè lên kết quả đã hiện, và icon kéo thả chồng lên ảnh vừa tải. Sửa bằng một dòng `[hidden] { display: none !important; }` đặt ngay đầu stylesheet, thay vì vá từng chỗ.
+
+Ngoài ra: `os.chdir(PROJECT_ROOT)` trong `cli.py`, vì `load_pretrained` gọi `YOLO("yolo26m.pt")` bằng đường dẫn tương đối và ultralytics giải nó theo thư mục làm việc — chạy từ chỗ khác thì nó lẳng lặng tải một bản mới về đó.
+
+### Đã kiểm chứng
+
+- Đối chiếu toàn bộ 310 ảnh test: đường webapp và đường `predict_yolo` của evaluation cho **kết quả trùng khớp hoàn toàn**
+- `POST /api/detect`: ảnh mẫu 20 vật thể, JSON đủ trường, data URL giải mã ra JPEG hợp lệ; file không phải ảnh trả 400
+- `WS /ws/detect`: 40 khung liên tiếp, `seq` đúng thứ tự và liên tục, đổi ngưỡng giữa luồng có tác dụng (15 → 1 vật thể), sống sót qua khung hỏng
+- Giao diện: nạp `/api/meta`, bấm ảnh mẫu ra 20 vật thể khớp số đo headless, thanh trượt 0,35 → 0,75 làm 20 → 3, nút tải kết quả hoạt động, console sạch
+- Cả hai đường vào của tab Upload — kéo thả và nút Sample — đều cho: ảnh gốc và ảnh kết quả hiện, hai lời nhắc rỗng ẩn, spinner chỉ hiện trong lúc chờ
+- Khung ôm sát ảnh ở cả ba tỉ lệ (640×426 ngang, 640×543 gần vuông, 427×640 dọc) và ở cả hai bố cục hai cột lẫn một cột: thừa 1 px mỗi bên, hai khung luôn bằng nhau
+- Tab Live: đè `getUserMedia` bằng `canvas.captureStream()` để giả camera — overlay vẽ được hộp, bảng đếm chạy, Start/Stop đúng trạng thái
+
+**Chưa kiểm chứng được:** thông lượng thật của tab Live trong trình duyệt. Pane trình duyệt của công cụ chạy ẩn, mà Chrome bóp `canvas.toBlob` xuống ~1 lần/giây ở tab ẩn (đo được 1012 ms/khung), nên chỉ đạt 1 fps ở đó. Con số đại diện là phép đo WebSocket duy trì phía trên (~33 fps). Cần thử lại bằng camera thật trên tab hiện.
 
 ## Cách làm việc user muốn
 
@@ -212,7 +258,7 @@ Chưa commit tại thời điểm cập nhật file này: sửa markdown hai not
 
 | Việc | Ghi chú |
 |---|---|
-| **Ứng dụng web** | Yêu cầu 2, kế hoạch ở trên |
+| **Thử tab Live bằng camera thật** | Chỉ còn bước này của Yêu cầu 2; server đã đo xong, phần chưa chắc là thông lượng phía trình duyệt |
 | **Khôi phục `docs/SETUP.md`** | `git show 9fd187a:docs/SETUP.md > docs/SETUP.md`. Repo không có README ghi cách dựng môi trường |
 | **Cập nhật `reports/evaluation.md`** | Chưa có phần YOLO26m. Đã bàn: làm thành mục cải tiến riêng, giữ nguyên phần so sánh 3 kiến trúc |
 | **Sửa D-FINE** | Chỉ nếu còn thời gian |

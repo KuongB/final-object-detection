@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fruit &amp; Vegetable Detection</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%232ca02c'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23ffbb27'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <div>
+      <h1>Fruit &amp; Vegetable Detection</h1>
+      <p class="sub">Five classes &middot; apple, banana, broccoli, carrot, orange</p>
+    </div>
+  </div>
+  <div class="model-badge" id="model-badge">
+    <span class="spinner"></span> loading model&hellip;
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab is-active" data-tab="upload" role="tab">Upload image</button>
+  <button class="tab" data-tab="live" role="tab">Live camera</button>
+</nav>
+
+<div class="control-bar">
+  <label for="conf">Confidence threshold</label>
+  <input type="range" id="conf" min="0.05" max="0.95" step="0.05" value="0.35">
+  <output id="conf-value">0.35</output>
+  <span class="hint" id="conf-hint">Applies to both tabs</span>
+</div>
+
+<!-- ------------------------------------------------------------------ -->
+<section class="panel is-active" id="panel-upload">
+
+  <div class="stage" id="upload-stage">
+    <figure class="frame">
+      <figcaption>Input</figcaption>
+      <div class="dropzone" id="dropzone">
+        <img id="original" alt="" hidden>
+        <div class="dropzone-empty" id="dropzone-empty">
+          <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">
+            <path d="M12 16V4m0 0L8 8m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+                  fill="none" stroke="currentColor" stroke-width="1.6"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p><strong>Drop an image here</strong></p>
+          <p class="muted">or click to browse &middot; JPG, PNG &middot; up to 25 MB</p>
+        </div>
+      </div>
+      <input type="file" id="file-input" accept="image/*" hidden>
+    </figure>
+
+    <figure class="frame">
+      <figcaption>Detected</figcaption>
+      <div class="dropzone is-output" id="output-box">
+        <img id="annotated" alt="" hidden>
+        <div class="dropzone-empty" id="output-empty">
+          <p class="muted">Results appear here</p>
+        </div>
+        <div class="busy" id="upload-busy" hidden><span class="spinner"></span></div>
+      </div>
+    </figure>
+  </div>
+
+  <div class="samples">
+    <span class="muted">Try a sample:</span>
+    <div id="sample-list"></div>
+    <button class="ghost" id="download" hidden>Download result</button>
+  </div>
+
+  <div class="readout">
+    <div class="card">
+      <h2>Count by class</h2>
+      <table class="counts" id="upload-counts"></table>
+      <p class="total"><span id="upload-total">0</span> objects detected</p>
+    </div>
+    <div class="card">
+      <h2>Detections</h2>
+      <ul class="detections" id="upload-detections">
+        <li class="muted">Nothing yet.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Timing</h2>
+      <dl class="stats">
+        <dt>Model inference</dt><dd id="upload-ms">&mdash;</dd>
+        <dt>Round trip</dt><dd id="upload-rtt">&mdash;</dd>
+        <dt>Image size</dt><dd id="upload-size">&mdash;</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------------ -->
+<section class="panel" id="panel-live">
+
+  <div class="live-note" id="live-note" hidden></div>
+
+  <div class="stage stage-live">
+    <figure class="frame">
+      <figcaption>Camera</figcaption>
+      <div class="video-wrap" id="video-wrap">
+        <div class="video-stage">
+          <video id="video" playsinline muted autoplay></video>
+          <canvas id="overlay"></canvas>
+        </div>
+        <div class="dropzone-empty" id="live-empty">
+          <p><strong>Camera is off</strong></p>
+          <p class="muted">Press start &mdash; the browser will ask for permission</p>
+        </div>
+      </div>
+      <div class="live-controls">
+        <button class="primary" id="live-toggle">Start camera</button>
+        <span class="pill" id="live-status">idle</span>
+      </div>
+    </figure>
+
+    <div class="readout readout-live">
+      <div class="card">
+        <h2>Throughput</h2>
+        <dl class="stats big">
+          <dt>Frames per second</dt><dd id="live-fps">&mdash;</dd>
+          <dt>Model inference</dt><dd id="live-ms">&mdash;</dd>
+          <dt>Round trip</dt><dd id="live-rtt">&mdash;</dd>
+          <dt>Frames processed</dt><dd id="live-frames">0</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>Count by class</h2>
+        <table class="counts" id="live-counts"></table>
+        <p class="total"><span id="live-total">0</span> objects in frame</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
