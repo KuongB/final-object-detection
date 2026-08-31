@@ -26,6 +26,9 @@ pycocotools==2.0.11
 
 # --- models ---
 ultralytics==8.4.117          # YOLO11s
+lap==0.5.13                   # ByteTrack's assignment solver, for the webcam
+                              # tracker. Ultralytics downloads it on first use
+                              # otherwise, which needs internet at demo time.
 transformers==5.15.0          # D-FINE-N (ustc-community/dfine-nano-coco)
 timm==1.0.28                  # backbone registry transformers pulls D-FINE through
 

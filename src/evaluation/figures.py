@@ -40,6 +40,7 @@ MODEL_COLORS = {
     "ssdlite": "#1f77b4",
     "yolo11s": "#2ca02c",
     "dfine": "#d62728",
+    "yolo26m": "#ff7f0e",
 }
 
 _RGB = {name: tuple(c / 255 for c in rgb) for name, rgb in CLASS_COLORS_RGB.items()}

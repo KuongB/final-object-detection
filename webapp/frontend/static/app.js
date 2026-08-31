@@ -47,7 +47,10 @@ async function boot() {
 
   renderCounts($('upload-counts'), emptyCounts());
   renderCounts($('live-counts'), emptyCounts());
+  renderCounts($('session-counts'), emptyCounts());
   buildSamples();
+  restoreSavedVisibility();
+  refreshSessions();
 
   if (!window.isSecureContext) {
     // getUserMedia is gated on a secure context, and http://192.168.x.x is not
@@ -270,6 +273,97 @@ async function runUpload(file) {
   };
 }
 
+/* -------------------------------------------------------------- sessions */
+
+/* A session runs from Start camera to Stop camera and is owned by the SERVER -
+ * the socket opening is what starts it. That is deliberate: the files have to
+ * be written somewhere, and a session that ends because the tab was closed
+ * still has to be recorded, which a browser-side tally could not guarantee.
+ *
+ * The number shown is distinct tracker ids, not a sum of per-frame counts.
+ * Summing frames would make one apple held up for ten seconds read as 300. */
+
+function renderSession(state) {
+  renderCounts($('session-counts'), state.counts);
+  $('session-total').textContent = state.total;
+  const started = new Date(state.started_at).toLocaleTimeString();
+  $('session-meta').textContent =
+    `Started ${started} · ${state.duration_seconds.toFixed(0)} s · ${state.frames} frames`;
+}
+
+function resetSessionCard() {
+  renderCounts($('session-counts'), emptyCounts());
+  $('session-total').textContent = '0';
+  $('session-meta').textContent = 'Press start to begin a session.';
+}
+
+function countChips(counts) {
+  const present = Object.entries(counts).filter(([, n]) => n > 0);
+  if (!present.length) return '<span class="muted">nothing detected</span>';
+  return '<div class="chips">' + present.map(([name, n]) =>
+    `<span class="chip"><i style="background:${colourOf(name)}"></i>${n} ${name}</span>`
+  ).join('') + '</div>';
+}
+
+/* Collapsing the list is remembered across reloads. It is a per-browser
+ * convenience, not state anyone else depends on, so localStorage is the right
+ * home for it - and it is wrapped because a private window can refuse. */
+const SAVED_OPEN_KEY = 'savedSessionsOpen';
+
+function setSavedVisible(visible) {
+  $('saved-body').hidden = !visible;
+  $('saved-toggle').textContent = visible ? 'Hide' : 'Show';
+  $('saved-toggle').setAttribute('aria-expanded', String(visible));
+  try {
+    localStorage.setItem(SAVED_OPEN_KEY, visible ? '1' : '0');
+  } catch (err) {
+    /* storage unavailable - the toggle still works for this page view */
+  }
+}
+
+function restoreSavedVisibility() {
+  let open = true;
+  try {
+    open = localStorage.getItem(SAVED_OPEN_KEY) !== '0';
+  } catch (err) {
+    /* default to open */
+  }
+  setSavedVisible(open);
+}
+
+$('saved-toggle').addEventListener('click', () => setSavedVisible($('saved-body').hidden));
+
+async function refreshSessions() {
+  let data;
+  try {
+    data = await (await fetch('/api/sessions')).json();
+  } catch (err) {
+    console.error('could not list sessions', err);
+    return;
+  }
+
+  $('csv-link').hidden = !data.csv_exists;
+
+  const table = $('session-list');
+  if (!data.sessions.length) {
+    table.innerHTML =
+      '<tr><td class="empty">No sessions recorded yet. Start the camera to make one.</td></tr>';
+    return;
+  }
+
+  table.innerHTML =
+    '<tr><th>Started</th><th>Duration</th><th>Frames</th><th>Counted</th>' +
+    '<th>Total</th><th>File</th></tr>' +
+    data.sessions.map((s) => `<tr>
+      <td>${new Date(s.started_at).toLocaleString()}</td>
+      <td class="num">${s.duration_seconds.toFixed(0)} s</td>
+      <td class="num">${s.frames}</td>
+      <td>${countChips(s.counts)}</td>
+      <td class="num"><strong>${s.total}</strong></td>
+      <td><a href="/sessions/session_${s.session_id}.json" download>JSON</a></td>
+    </tr>`).join('');
+}
+
 /* ------------------------------------------------------------------ live */
 
 /* Frames are captured at this width regardless of what the camera gives us.
@@ -288,12 +382,29 @@ const captureCtx = capture.getContext('2d', { willReadFrequently: false });
 let socket = null;
 let stream = null;
 let running = false;
+
+/* A webcam hands over the true image, but every video-call app shows you a
+ * mirror, so the raw feed reads as "backwards" - text is reversed and moving
+ * your hand right moves it right instead of left. Mirroring is therefore on by
+ * default, and it is purely cosmetic: the frame sent for detection is taken
+ * with drawImage, which ignores CSS transforms, so the model always sees the
+ * true image and the counts are identical either way. */
+let mirrored = true;
 let framesDone = 0;
 let sentAt = 0;
 let lastReplyAt = 0;
 const intervals = [];   // recent gaps between results, for the FPS average
 
 $('live-toggle').addEventListener('click', () => (running ? stopLive() : startLive()));
+
+$('mirror').addEventListener('change', (e) => {
+  mirrored = e.target.checked;
+  applyMirror();
+});
+
+function applyMirror() {
+  document.querySelector('.video-stage').classList.toggle('is-mirrored', mirrored);
+}
 
 function setStatus(text, kind) {
   const pill = $('live-status');
@@ -325,6 +436,7 @@ async function startLive() {
   overlay.width = capture.width;
   overlay.height = capture.height;
 
+  applyMirror();
   $('video-wrap').classList.add('is-on');
   $('live-toggle').textContent = 'Stop camera';
   $('live-toggle').classList.add('is-stop');
@@ -332,6 +444,7 @@ async function startLive() {
   framesDone = 0;
   lastReplyAt = 0;
   intervals.length = 0;
+  resetSessionCard();
 
   openSocket();
 }
@@ -357,6 +470,16 @@ function openSocket() {
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
     const now = performance.now();
+
+    if (data.error === 'busy') {
+      // The server allows one camera session at a time, because the tracker
+      // lives on the model and two streams would corrupt each other's ids.
+      setStatus(data.detail || 'already running elsewhere', 'error');
+      stopLive();
+      return;
+    }
+
+    if (data.session) renderSession(data.session);
 
     drawOverlay(data.detections);
     renderCounts($('live-counts'), data.counts);
@@ -408,7 +531,13 @@ function drawOverlay(detections) {
   overlayCtx.textBaseline = 'top';
 
   for (const det of detections) {
-    const [x0, y0, x1, y1] = det.box;
+    let [x0, y0, x1, y1] = det.box;
+    // The picture is mirrored in CSS but the coordinates describe the true
+    // frame, so reflect them here. Doing it per box rather than by flipping
+    // the whole canvas keeps the labels the right way round.
+    if (mirrored) {
+      [x0, x1] = [overlay.width - x1, overlay.width - x0];
+    }
     const colour = colourOf(det.label);
 
     overlayCtx.strokeStyle = colour;
@@ -428,9 +557,53 @@ function drawOverlay(detections) {
   }
 }
 
+function finishSession(record) {
+  // `null` means the session saw no frames, so nothing was written - starting
+  // the camera and stopping it straight away should not leave a file behind.
+  if (!record) {
+    $('session-meta').textContent = 'Session ended with no frames - nothing saved.';
+    return;
+  }
+  renderSession(record);
+  $('session-meta').textContent =
+    `Saved as session_${record.session_id}.json · ${record.frames} frames · ` +
+    `${record.duration_seconds.toFixed(0)} s`;
+}
+
 function stopLive() {
   running = false;
-  if (socket) { socket.onclose = null; socket.close(); socket = null; }
+
+  const sock = socket;
+  socket = null;
+  if (sock) {
+    sock.onclose = null;
+    if (sock.readyState === WebSocket.OPEN) {
+      // The polite ending: ask the server to close the session and hand back
+      // its summary before the socket goes. This is a nicety, not the
+      // mechanism - the server writes the session on disconnect either way, so
+      // a crashed tab or a pulled cable still leaves a record.
+      sock.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if ('session_closed' in data) finishSession(data.session_closed);
+        sock.close();
+        refreshSessions();
+      };
+      try {
+        sock.send(JSON.stringify({ action: 'end' }));
+      } catch (err) {
+        sock.close();   // already closing from the server's side
+      }
+      // If the summary never arrives, do not hold the socket open forever.
+      setTimeout(() => {
+        if (sock.readyState < WebSocket.CLOSING) sock.close();
+        refreshSessions();
+      }, 1200);
+    } else {
+      sock.close();
+      setTimeout(refreshSessions, 400);
+    }
+  }
+
   if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
   video.srcObject = null;
 

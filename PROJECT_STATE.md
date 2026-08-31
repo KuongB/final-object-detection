@@ -1,6 +1,6 @@
 # Trạng thái dự án
 
-Cập nhật: 2026-08-22. File này tóm tắt để bắt đầu một phiên làm việc mới mà không phải đọc lại lịch sử.
+Cập nhật: 2026-08-23. File này tóm tắt để bắt đầu một phiên làm việc mới mà không phải đọc lại lịch sử.
 
 ## Đề bài
 
@@ -13,9 +13,9 @@ Nộp: mã nguồn, trọng số, dataset, báo cáo. Đóng gói một file ZIP
 
 ## Việc đang làm
 
-**Yêu cầu 1: xong.** Bốn mô hình đã huấn luyện và đánh giá, báo cáo ở `reports/evaluation.md`.
+**Yêu cầu 1: xong.** Bốn mô hình đã huấn luyện và đánh giá. Báo cáo nộp ở `reports/report.md` — một file phủ cả hai yêu cầu, 9 chương. `reports/evaluation.md` đã bị hấp thụ hoàn toàn vào đó và xoá.
 
-**Yêu cầu 2: xong.** Ứng dụng web chạy được, hai chức năng: tải ảnh lên, và camera thời gian thực. Chi tiết ở mục cuối file này.
+**Yêu cầu 2: xong.** Ứng dụng web chạy được, hai chức năng: tải ảnh lên, và camera thời gian thực. Chi tiết kỹ thuật ở mục cuối file này; phần viết cho người chấm ở chương 7 của `reports/report.md`.
 
 ## Môi trường
 
@@ -132,7 +132,7 @@ Cho checkpoint gốc 80 lớp, dùng `load_pretrained()` trong `src/evaluation/r
 runs/ssdlite        runs/yolo11s (15 ep)   runs/yolo11s_deep (64 ep)
 runs/dfine          runs/yolo26m_oi
 weights/{ssdlite,yolo11s,dfine,yolo26m}/best.pt + index.json
-reports/evaluation.md, figures/*.png, results/evaluation_test_{best,last,pretrained}.json
+reports/report.md, figures/*.png, results/evaluation_test_{best,last,pretrained}.json
 yolo11s.pt, yolo26m.pt        <- checkpoint goc, dung cho --checkpoint pretrained
 ```
 
@@ -171,13 +171,15 @@ Phải mở bằng **`localhost`**. Trình duyệt chỉ cấp camera trong secu
 ### File
 
 ```
-src/webapp/detector.py    nạp model, suy luận, đếm số lượng
+src/webapp/detector.py    nạp model, suy luận, đếm số lượng, bám vết
+src/webapp/session.py     phiên camera: đếm vật thể riêng biệt, ghi JSON + CSV
 src/webapp/drawing.py     vẽ hộp bằng PIL + mã hoá data URL
 src/webapp/app.py         FastAPI, lifespan + 4 route
 src/webapp/cli.py         argparse + uvicorn
 scripts/30_serve.py       launcher
 webapp/frontend/          index.html + static/{app.js,style.css}, JS thuần, không cần build
 webapp/samples/           4 ảnh test (3 ngang, 1 dọc), để chạy demo được khi chưa giải nén data/
+webapp/sessions/          bản ghi từng phiên camera, sinh lúc chạy, không vào git
 ```
 
 Lệch với phác thảo cũ: FastAPI nằm ở `src/webapp/app.py` chứ không phải `webapp/backend/app.py`, vì route là logic. Thư mục `webapp/backend/` rỗng đã bỏ cùng hai dòng `.gitignore` tương ứng.
@@ -188,8 +190,40 @@ Lệch với phác thảo cũ: FastAPI nằm ở `src/webapp/app.py` chứ khôn
 | `GET /api/meta` | 5 lớp, bảng màu, ngưỡng mặc định, thông tin model, danh sách ảnh mẫu |
 | `POST /api/detect` | ảnh + ngưỡng → JSON kèm ảnh đã vẽ hộp (data URL), danh sách vật thể, số lượng theo lớp |
 | `WS /ws/detect` | khung JPEG vào, **chỉ toạ độ** ra — trình duyệt tự vẽ overlay lên canvas |
+| `GET /api/sessions` | danh sách phiên đã lưu, mới nhất trước |
+| `GET /sessions/*` | file JSON và `sessions.csv` phục vụ trực tiếp |
 
 Model nạp một lần trong `lifespan`, dùng lại `load_pretrained()` ở `src/evaluation/runner.py` nên bảng ánh xạ COCO-80 → 5 lớp chỉ tồn tại một chỗ. Màu lấy từ `CLASS_COLORS_RGB` và phát qua `/api/meta`, nên overlay của trình duyệt, ảnh server vẽ và hình trong báo cáo không thể lệch nhau. Suy luận là lời gọi chặn nên cả hai route đều đi qua `run_in_threadpool`.
+
+### Đếm theo phiên camera
+
+Một phiên bắt đầu khi bấm Start camera và kết thúc khi bấm Stop. **Socket chính là phiên** — không cần đồng bộ thêm gì, và phiên kết thúc vì đóng tab hay rút dây vẫn được ghi, vì đường ngắt kết nối chạy chung hàm `close()`.
+
+**Đếm theo id riêng biệt của tracker, không phải cộng số đếm từng khung.** Cộng từng khung thì ở 30 fps, một quả táo đứng yên 10 giây sẽ thành 300 — con số đó đo tốc độ khung hình chứ không đo trái cây. Tracker cấp id khi vật thể xuất hiện và giữ id đó suốt lúc nó còn trong khung; rời đi rồi quay lại là id mới, tức quả mới. Tally là phép hợp tập hợp id, nên cùng một quả xuất hiện trong 300 khung vẫn chỉ vào tập một lần.
+
+Đã đo đúng hành vi này:
+
+| Kịch bản | Kết quả |
+|---|---|
+| 60 khung y hệt, cảnh đứng yên | tổng phiên đứng nguyên ở 11 |
+| Rời khung 45 khung rồi quay lại | 11 → 22 |
+| Mở rồi đóng, không khung nào | không ghi file |
+| Ngắt đột ngột, không báo trước | vẫn ghi đủ 25 khung |
+
+Lưu ở `webapp/sessions/`: mỗi phiên một `session_<id>.json`, và một dòng nối thêm vào `sessions.csv` để so sánh giữa các phiên.
+
+```json
+{"session_id": "20260822_081013",
+ "started_at": "2026-08-22T08:10:13+07:00",
+ "ended_at": "2026-08-22T08:10:18+07:00",
+ "duration_seconds": 4.9, "frames": 146,
+ "counts": {"apple": 4, "banana": 10, "broccoli": 0, "carrot": 0, "orange": 8},
+ "total": 22}
+```
+
+**Ảnh camera được lật gương khi hiển thị** (bật mặc định, có ô tắt). Webcam trả về ảnh thật, nhưng mọi ứng dụng gọi video đều soi gương, nên ảnh thô đọc như bị ngược. Chỉ lật thẻ `<video>` bằng CSS; canvas overlay **không** lật, vì lật nó sẽ lật luôn chữ trên nhãn — thay vào đó `drawOverlay` đảo toạ độ x của từng hộp. Đã kiểm chứng đây thuần tuý là hiển thị: `drawImage` bỏ qua CSS transform, ảnh chụp ra giống hệt từng byte dù bật hay tắt gương, nên model luôn thấy ảnh thật và số đếm không đổi.
+
+**Chỉ cho một phiên chạy tại một thời điểm.** Tracker nằm trên instance model, nên tab thứ hai sẽ đổ khung của nó vào cùng tracker và cả hai tally đều sai. Từ chối thẳng tốt hơn là cho ra hai con số tự tin nhưng sai.
 
 ### Số đo (RTX 4060 Laptop, đo trên máy này)
 
@@ -197,13 +231,14 @@ Model nạp một lần trong `lifespan`, dùng lại `load_pretrained()` ở `s
 |---|---|
 | Suy luận yolo26m, batch 1 | 20,9 ms median (47,9 fps), VRAM đỉnh 0,22 / 8,59 GB |
 | WebSocket end-to-end | 29,9 ms round trip median, p95 36,3 ms → ~33 fps |
+| WebSocket kèm bám vết | 31,4 ms median, p95 39,8 ms — bám vết tốn ~1,5 ms |
 | Request đầu sau khởi động | 84 ms, rồi về ~20 ms |
 
 GPU thừa sức, **không cần GPU serverless** (Modal hay tương tự). Ba mức imgsz 320/480/640 cho cùng một thời gian, nghĩa là ~21 ms đó gần như toàn bộ là tiền/hậu xử lý phía CPU của ultralytics.
 
 Đã bỏ phương án ONNX chạy trong trình duyệt: phải viết lại letterbox và giải mã đầu ra YOLO26 bằng JS, mọi sai lệch nhỏ sẽ âm thầm cho kết quả khác báo cáo, lại phải tải ~80 MB về máy khách.
 
-### Sáu cạm bẫy, đều do chạy thử mà biết
+### Tám cạm bẫy, đều do chạy thử mà biết
 
 **1. `rect=False` là bắt buộc.** Ultralytics letterbox ảnh đơn chỉ tới bội số stride gần nhất (640×480), còn lúc đánh giá ảnh đi theo batch 16 lẫn kích thước nên bị đệm thành vuông 640×640. Hai cách cho kết quả khác nhau trên **62/310** ảnh test, lệch tới 3 vật thể — `000000061658.jpg` ra 7 broccoli kiểu chữ nhật, 10 kiểu vuông. Báo cáo đo bằng kiểu vuông. Sau khi ép `rect=False`: **0/310 ảnh lệch**.
 
@@ -215,7 +250,13 @@ GPU thừa sức, **không cần GPU serverless** (Modal hay tương tự). Ba m
 
 **5. Khung ảnh phải tính bằng JS, CSS không làm được.** Để `1fr 1fr` thì ảnh dọc nằm trong khung ngang, thừa ~150 px trắng mỗi bên. CSS thuần bó tay: `max-height` chỉ chặn ảnh *hiển thị* cao bao nhiêu, còn bề rộng khung vẫn được bố cục theo kích thước gốc của ảnh — đúng chỗ hở ra. `app.js::fitStage` tính bề rộng cột từ `data.width/height` mà API đã trả về, đặt `gridTemplateColumns` theo px và nghe `resize`. Đo lại: thừa 1 px mỗi bên, đúng bằng đường viền.
 
-**6. Thuộc tính `hidden` của HTML thua CSS.** `hidden` chỉ là `display: none` trong stylesheet của trình duyệt, nên bất kỳ quy tắc nào của mình đặt `display` đều thắng nó — và có ba quy tắc như vậy (`.busy`, `.dropzone-empty`, `.dropzone img`). Hậu quả: lớp loading vẫn đè lên kết quả đã hiện, và icon kéo thả chồng lên ảnh vừa tải. Sửa bằng một dòng `[hidden] { display: none !important; }` đặt ngay đầu stylesheet, thay vì vá từng chỗ.
+**6. Tracker mặc định của YOLO26 im lặng không bám gì cả.** `model.track()` dùng `TRACKTRACK` với `new_track_thresh = 0,7` — nó chỉ mở track cho vật thể tự tin ≥ 0,7, mà phần lớn detection ở đây nằm khoảng 0,35–0,65. Hậu quả: **mọi khung trả về `boxes.id is None`**, không lỗi, không cảnh báo, detection thô vẫn đi qua bình thường — nên nếu không kiểm tra thì phiên nào cũng đếm ra 0. Đo trên một lượt pan 16 khung: TRACKTRACK cho id ở 0/16 khung, ByteTrack 16/16. Phải truyền `tracker="bytetrack.yaml"` (`new_track_thresh = 0,25`), đã gán hằng ở `detector.py::TRACKER_CONFIG`.
+
+Kèm theo: bám vết cần gói `lap`, ultralytics tự tải về lần đầu dùng. Đã ghim `lap==0.5.13` vào `requirements.txt` để lúc demo không phải có mạng.
+
+**7. File tĩnh phải bắt trình duyệt kiểm tra lại.** Sửa `style.css` rồi tải lại trang mà trình duyệt vẫn dùng bản cũ trong cache — không lỗi gì, tính năng chỉ đơn giản là không xuất hiện, và kết luận tự nhiên là "chưa làm". Đã gặp thật với ô Mirror: `index.html` mới nên checkbox hiện ra, nhưng CSS cũ không có quy tắc `.is-mirrored` nên bấm không đổi gì. `RevalidatingStaticFiles` trong `app.py` gắn `Cache-Control: no-cache` — không phải "đừng lưu", mà là "hỏi lại trước khi dùng"; file không đổi trả về 304 rỗng, tốn chưa tới một phần nghìn giây trên localhost.
+
+**8. Thuộc tính `hidden` của HTML thua CSS.** `hidden` chỉ là `display: none` trong stylesheet của trình duyệt, nên bất kỳ quy tắc nào của mình đặt `display` đều thắng nó — và có ba quy tắc như vậy (`.busy`, `.dropzone-empty`, `.dropzone img`). Hậu quả: lớp loading vẫn đè lên kết quả đã hiện, và icon kéo thả chồng lên ảnh vừa tải. Sửa bằng một dòng `[hidden] { display: none !important; }` đặt ngay đầu stylesheet, thay vì vá từng chỗ.
 
 Ngoài ra: `os.chdir(PROJECT_ROOT)` trong `cli.py`, vì `load_pretrained` gọi `YOLO("yolo26m.pt")` bằng đường dẫn tương đối và ultralytics giải nó theo thư mục làm việc — chạy từ chỗ khác thì nó lẳng lặng tải một bản mới về đó.
 
@@ -226,6 +267,8 @@ Ngoài ra: `os.chdir(PROJECT_ROOT)` trong `cli.py`, vì `load_pretrained` gọi 
 - `WS /ws/detect`: 40 khung liên tiếp, `seq` đúng thứ tự và liên tục, đổi ngưỡng giữa luồng có tác dụng (15 → 1 vật thể), sống sót qua khung hỏng
 - Giao diện: nạp `/api/meta`, bấm ảnh mẫu ra 20 vật thể khớp số đo headless, thanh trượt 0,35 → 0,75 làm 20 → 3, nút tải kết quả hoạt động, console sạch
 - Cả hai đường vào của tab Upload — kéo thả và nút Sample — đều cho: ảnh gốc và ảnh kết quả hiện, hai lời nhắc rỗng ẩn, spinner chỉ hiện trong lúc chờ
+- Lật gương: hộp ở toạ độ x 100–200 vẽ ra đúng 438–541 trên khung rộng 640 (lệch 2 px là bề dày nét), overlay không dính transform, ảnh gửi model không đổi
+- Phiên camera: 60 khung tĩnh giữ nguyên tổng, rời-rồi-quay-lại đếm mới, tab thứ hai bị từ chối, ngắt đột ngột vẫn ghi, phiên rỗng không ghi; giao diện cập nhật tally theo thời gian thực, hiện tên file khi lưu, bảng phiên đã lưu tự làm mới
 - Khung ôm sát ảnh ở cả ba tỉ lệ (640×426 ngang, 640×543 gần vuông, 427×640 dọc) và ở cả hai bố cục hai cột lẫn một cột: thừa 1 px mỗi bên, hai khung luôn bằng nhau
 - Tab Live: đè `getUserMedia` bằng `canvas.captureStream()` để giả camera — overlay vẽ được hộp, bảng đếm chạy, Start/Stop đúng trạng thái
 
@@ -254,11 +297,26 @@ a02b643  Rebuild the training pipeline and add evaluation
 
 Chưa commit tại thời điểm cập nhật file này: sửa markdown hai notebook EDA/Eval, hai notebook Kaggle mới, entry `yolo26m` trong `src/config.py`, bỏ ràng buộc `choices` trong `src/evaluation/cli.py`, và kết quả đánh giá mới.
 
+## Báo cáo (2026-08-23)
+
+`reports/report.md` là báo cáo nộp, gộp cả hai yêu cầu. Chốt trong lúc viết:
+
+- **Số liệu lấy từ checkpoint `best`**, tức `reports/results/evaluation_test_best.json` — file duy nhất có đủ 4 mô hình, và ba hình eval đã sinh lại từ payload này. Số tốc độ lấy thẳng từ cùng file đó, không đo lại.
+- **Bảng tốc độ cũ trong `evaluation.md` (6,6 / 12,4 / 21,4 ms) không truy ngược được về file nào** — JSON đã lưu ghi 13,6 / 25,6 / 42,5 ms. Báo cáo mới dùng số trong JSON.
+- **`MODEL_COLORS` thiếu khoá `yolo26m`** nên nó rơi vào màu mặc định trùng `ssdlite`. Đã thêm `#ff7f0e` và sinh lại `eval_per_class_ap.png`.
+- **Điểm tin cậy cao nhất của D-FINE đo lại theo checkpoint**: `best` 0,3028, `last` 0,3342. Cả hai dưới ngưỡng 0,35, 0/310 ảnh có hộp. Con số 0,334 trong báo cáo cũ là của `last`.
+- **Thêm `src/data/figures.py` + `scripts/05_dataset_figures.py`** sinh 4 hình mô tả dataset. Notebook `01_eda` gọi chính bốn hàm đó rồi hiện file PNG, nên notebook và báo cáo không thể lệch nhau. Đã chạy lại notebook, 13/13 ô có output.
+- **Ba ảnh chụp web app** ở `reports/figures/webapp_{upload,live,sessions}.png`. Pane trình duyệt của công cụ không composite frame nên chụp bằng Chrome headless điều khiển qua CDP; script ở scratchpad. Camera giả dựng bằng `canvas.captureStream()`.
+- **Số instance có hai cách đếm.** Thô 38.460; sau khi bỏ 600 nhãn `iscrowd` thì còn 37.860 — đó là con số `CocoRecords` nạp và EDA vẽ. Báo cáo ghi cả hai.
+- **Hai bản đóng gói, cùng sinh từ `reports/report.md`.** `scripts/06_report_bundle.py` dựng `report-prism/` (Markdown phẳng, 2,2 MB) — `scripts/07_report_latex.py` dựng `report-latex/` + zip cho Overleaf. Máy này KHÔNG có LaTeX lẫn pandoc nên `.tex` chưa được biên dịch thử; đã kiểm tĩnh thay thế: không sót markdown, môi trường cân, số ô khớp số cột, và số mục viết tay trong văn bản khớp số LaTeX tự sinh (9 section / 45 subsection). Phải biên dịch bằng **XeLaTeX**, không phải pdfLaTeX.
+- **Hai bẫy đã xử lý khi sinh LaTeX:** một khối code ở mục 9.1 có chữ tiếng Việt (dùng `fancyvrb` thay `listings` vì listings nuốt dấu), và các ký hiệu `→ ≥ − · ×` không có trong font chữ nên đưa qua math mode.
+- **`.gitignore` đang loại nhầm cả `src/data/`.** Dòng `data/` không có dấu `/` đầu nên git khớp mọi thư mục tên `data` ở mọi độ sâu. Hậu quả: `src/data/{__init__,build,coco_dataset,transforms}.py` **chưa bao giờ được commit** — clone repo về là không chạy được, và đề bài yêu cầu nộp mã nguồn đầy đủ. Đã đổi thành `/data/*` và `/runs/`. Nhân tiện `!data/.gitkeep` cũng chưa bao giờ có tác dụng vì git không đi vào thư mục đã loại; đổi sang `/data/*` thì nó hoạt động. **Cần `git add src/data/` trước khi đóng gói nộp.**
+- **Cột Open Images val ở mục 6.3 không tái lập được**: `oi_data/` đã dọn. Đã đánh dấu rõ trong báo cáo và ở mục giới hạn.
+
 ## Việc chưa làm
 
 | Việc | Ghi chú |
 |---|---|
 | **Thử tab Live bằng camera thật** | Chỉ còn bước này của Yêu cầu 2; server đã đo xong, phần chưa chắc là thông lượng phía trình duyệt |
 | **Khôi phục `docs/SETUP.md`** | `git show 9fd187a:docs/SETUP.md > docs/SETUP.md`. Repo không có README ghi cách dựng môi trường |
-| **Cập nhật `reports/evaluation.md`** | Chưa có phần YOLO26m. Đã bàn: làm thành mục cải tiến riêng, giữ nguyên phần so sánh 3 kiến trúc |
 | **Sửa D-FINE** | Chỉ nếu còn thời gian |

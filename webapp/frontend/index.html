@@ -117,6 +117,9 @@
       <div class="live-controls">
         <button class="primary" id="live-toggle">Start camera</button>
         <span class="pill" id="live-status">idle</span>
+        <label class="toggle" title="Show the camera the way a mirror would, which is what most video apps do. Detection is unaffected - the model always sees the true image.">
+          <input type="checkbox" id="mirror" checked> Mirror
+        </label>
       </div>
     </figure>
 
@@ -135,6 +138,26 @@
         <table class="counts" id="live-counts"></table>
         <p class="total"><span id="live-total">0</span> objects in frame</p>
       </div>
+
+      <div class="card is-session">
+        <h2>Session total</h2>
+        <table class="counts" id="session-counts"></table>
+        <p class="total"><span id="session-total">0</span> distinct objects this session</p>
+        <p class="muted note" id="session-meta">Press start to begin a session.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="saved">
+    <div class="saved-head">
+      <h2>Saved sessions</h2>
+      <button class="ghost" id="saved-toggle" aria-expanded="true" aria-controls="saved-body">Hide</button>
+      <a class="ghost" id="csv-link" href="/sessions/sessions.csv" download hidden>
+        Download sessions.csv
+      </a>
+    </div>
+    <div id="saved-body">
+      <table class="sessions" id="session-list"></table>
     </div>
   </div>
 </section>

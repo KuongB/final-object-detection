@@ -8,7 +8,7 @@ class-id mapping to get wrong.
 The model is the public COCO checkpoint `yolo26m.pt`, *not* a fine-tuned one.
 That is a measured decision rather than an oversight: it scores 0.3063 mAP on
 the test split against 0.2642 for the best fine-tuned checkpoint (see
-`reports/evaluation.md`). Its head still carries all 80 COCO classes, so the
+`reports/report.md`). Its head still carries all 80 COCO classes, so the
 five this project cares about are selected with `classes=` at predict time and
 their indices are translated back through the same map the evaluation used.
 """
@@ -25,6 +25,16 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from PIL.Image import Image
 
 
+#: Tracker config passed to `model.track`. Not the default, and that matters:
+#: YOLO26 ships with TRACKTRACK, whose `new_track_thresh` is 0.7 - it only opens
+#: a track for a detection it is 70% sure of. Most detections here score 0.35 to
+#: 0.65, so nothing ever started a track and every frame came back with
+#: `boxes.id is None`, silently, with the raw detections passed through. ByteTrack
+#: uses 0.25 and tracks normally. Measured over a 16-frame pan: TRACKTRACK gave
+#: ids on 0 frames, ByteTrack on 16.
+TRACKER_CONFIG = "bytetrack.yaml"
+
+
 @dataclass(frozen=True)
 class Detection:
     """One object, in the coordinates of the image that was submitted."""
@@ -33,13 +43,19 @@ class Detection:
     confidence: float
     #: xyxy, absolute pixels of the original image - not the 640x640 the model saw.
     box: tuple[float, float, float, float]
+    #: Identity across frames, from the tracker. `None` on the upload path,
+    #: which sees one still image and has nothing to track it against.
+    track_id: int | None = None
 
     def as_dict(self) -> dict:
-        return {
+        payload = {
             "label": self.label,
             "confidence": round(self.confidence, 4),
             "box": [round(v, 1) for v in self.box],
         }
+        if self.track_id is not None:
+            payload["track_id"] = self.track_id
+        return payload
 
 
 @dataclass
@@ -74,7 +90,8 @@ class Detector:
     hold for the lifetime of the process.
     """
 
-    def __init__(self, model_key: str = "yolo26m", device: str = "auto") -> None:
+    def __init__(self, model_key: str = "yolo26m", device: str = "auto",
+                 track: bool = False) -> None:
         from src.evaluation.runner import load_pretrained
         from src.training.common import get_device
 
@@ -112,6 +129,15 @@ class Detector:
         # second of capacity, serialising them costs nothing worth having.
         self._lock = threading.Lock()
 
+        # Tracking is a property of the *instance*, not of the call, because
+        # ultralytics keeps the tracker on `model.predictor.trackers`. A
+        # tracking detector therefore owns a YOLO of its own - verified: two
+        # instances hold two distinct tracker objects, and a `predict` on one
+        # neither picks up ids nor disturbs the other's tracks. A second copy of
+        # yolo26m costs about 0.1 GB of an 8.6 GB card.
+        self.track = track
+        self._tracking_started = False
+
         self._warmup()
 
     def _warmup(self) -> None:
@@ -128,6 +154,18 @@ class Detector:
         from PIL import Image
 
         self.detect(Image.new("RGB", (self.imgsz, self.imgsz)), conf=0.9)
+        # The warmup frame counts as a tracked frame, so forget it - otherwise
+        # the first real session would resume from it instead of starting clean.
+        self.reset_tracking()
+
+    def reset_tracking(self) -> None:
+        """Forget every track, so the next frame begins a new session.
+
+        Cheap: it only clears a flag. The tracker itself is torn down and
+        rebuilt by ultralytics on the next call, because that call will pass
+        `persist=False`.
+        """
+        self._tracking_started = False
 
     # ------------------------------------------------------------------ #
 
@@ -146,12 +184,27 @@ class Detector:
         conf = min(max(float(conf), 0.01), 0.99)
 
         with self._lock:
-            result = self._model.predict(
+            if self.track:
+                # `persist=False` on the first frame wipes the previous
+                # session's tracks and restarts the ids, so one camera session
+                # never inherits identities from the one before it.
+                run = self._model.track
+                extra = {
+                    "persist": self._tracking_started,
+                    "tracker": TRACKER_CONFIG,
+                }
+                self._tracking_started = True
+            else:
+                run = self._model.predict
+                extra = {}
+
+            result = run(
                 image,
                 imgsz=self.imgsz,
                 conf=conf,
                 classes=self._keep,
                 device=self._predict_device,
+                **extra,
                 # Square 640x640 letterbox, which is *not* what ultralytics does
                 # for a single image by default. Left alone it pads only to the
                 # next stride multiple (640x480 for a landscape photo), and the
@@ -172,8 +225,17 @@ class Detector:
         boxes = result.boxes
         if boxes is not None and len(boxes) > 0:
             height, width = result.orig_shape
-            for cls, score, xyxy in zip(
-                boxes.cls.tolist(), boxes.conf.tolist(), boxes.xyxy.tolist()
+            # `boxes.id` is None whenever the tracker confirmed nothing this
+            # frame - ultralytics then passes the raw detections through
+            # untouched. Those objects are still drawn; they just cannot be
+            # counted yet, and will pick up an id once the tracker settles.
+            track_ids = (
+                boxes.id.int().tolist()
+                if getattr(boxes, "id", None) is not None
+                else [None] * len(boxes)
+            )
+            for cls, score, xyxy, tid in zip(
+                boxes.cls.tolist(), boxes.conf.tolist(), boxes.xyxy.tolist(), track_ids
             ):
                 name = self._name_of.get(int(cls))
                 if name is None:  # `classes=` already filtered; belt and braces
@@ -183,6 +245,7 @@ class Detector:
                     Detection(
                         label=name,
                         confidence=float(score),
+                        track_id=None if tid is None else int(tid),
                         # Clipped because a box may overhang the border and the
                         # front end draws onto a canvas exactly the image's size.
                         box=(
