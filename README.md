@@ -135,29 +135,7 @@ bỏ qua, nên `--model all` không chết giữa chừng vì một tuỳ chọn
 ứng dụng web nạp được, nhưng cố ý vắng mặt trong `TRAINERS` vì
 `src/training/train_yolo.py` gán cứng `MODEL_KEY = "yolo11s"` — thêm vào sẽ khiến
 `--model yolo26m` âm thầm huấn luyện nhầm mô hình rồi promote sai tên. Muốn tái lập nó thì
-dùng `notebooks/04_kaggle_yolo26m_openimages.ipynb` trên Kaggle.
-
-Mỗi lượt ghi vào `runs/<key>[_tag]/`: `train.log`, `history.json`, `best.pt`, `last.pt` —
-riêng lượt YOLO thì ultralytics giữ layout của nó, `last.pt` nằm trong
-`runs/<name>/weights/`, chỉ `best.pt` được nhân bản ra thư mục gốc của run.
-Script từ chối chạy đè lên một lượt đã hoàn tất (có `history.json`) trừ khi có `--resume`,
-`--overwrite` hoặc `--tag`; phép kiểm tra này chạy cho mọi mô hình đích **trước khi** huấn
-luyện bất cứ thứ gì, nên `--model all` báo lỗi ngay chứ không phải sau một giờ.
-
-Stdout được tee vào `runs/<name>/train.log`, nên chạy nền vẫn theo dõi được:
-
-```powershell
-Get-Content runs/ssdlite/train.log -Tail 20 -Wait
-```
-
-Chi phí huấn luyện đo trên RTX 4060 Laptop: SSDLite 29,7 phút (96,5 s/epoch, VRAM đỉnh
-1,81 GB), YOLO11s 89,7 phút (83,5 s/epoch, 4,24 GB), D-FINE-N 42,2 phút (140,2 s/epoch,
-3,09 GB).
-
-`workers=2` là con số đo được chứ không phải phỏng đoán thận trọng: Windows spawn worker
-thay vì fork, nên mỗi worker phải import lại toàn bộ stack. Với 4 worker, loader của YOLO
-chết giữa epoch và SSDLite chạy 0,201 s/step; với 2 worker nó ổn định và nhanh hơn,
-0,162 s/step. Trên Linux nâng lên 8 được.
+dùng `notebooks/04_kaggle_yolo26m_openimages.ipynb` trên Kaggle.**
 
 ---
 
