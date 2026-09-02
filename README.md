@@ -61,8 +61,6 @@ pip install -r requirements.txt
 # Kiểm tra:
 python scripts/00_check_env.py
 ```
-
-
 ---
 
 ## Dựng lại tập dữ liệu
